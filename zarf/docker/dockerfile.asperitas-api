@@ -1,0 +1,46 @@
+# Build the Go Binary.
+FROM golang:1.15.5 as build_asperitas-api
+ENV CGO_ENABLED 0
+ARG VCS_REF
+
+# Create a location in the container for the source code. Using the
+# default GOPATH location.
+RUN mkdir -p /service
+
+# Copy the module files first and then download the dependencies. If this
+# doesn't change, we won't need to do this again in future builds.
+# COPY go.* /service/
+# WORKDIR /service
+# RUN go mod download
+
+# Copy the source code into the container.
+WORKDIR /service
+COPY . .
+
+# Build the admin tool so we can have it in the container. This should not change
+# often so do this first.
+WORKDIR /service/app/asperitas-admin
+RUN go build -ldflags "-X main.build=${VCS_REF}"
+
+# Build the service binary. We are doing this last since this will be different
+# every time we run through this process.
+WORKDIR /service/app/asperitas-api
+RUN go build -ldflags "-X main.build=${VCS_REF}"
+
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.12
+ARG BUILD_DATE
+ARG VCS_REF
+COPY --from=build_asperitas-api /service/private.pem /service/private.pem
+COPY --from=build_asperitas-api /service/app/asperitas-admin/asperitas-admin /service/admin
+COPY --from=build_asperitas-api /service/app/asperitas-api/asperitas-api /service/asperitas-api
+WORKDIR /service
+CMD ["./asperitas-api"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="asperitas-api" \
+      org.opencontainers.image.authors="somebodies" \
+      org.opencontainers.image.source="https://github.com/cravtos/service/app/asperitas-api" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="somebodies"
