@@ -30,7 +30,6 @@ var migrations = []darwin.Migration{
 CREATE TABLE users (
 	user_id       UUID,
 	name          TEXT,
-	roles         TEXT[],
 	password_hash TEXT,
 	date_created  TIMESTAMP,
 

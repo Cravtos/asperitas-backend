@@ -89,8 +89,8 @@ func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, us
 		return ErrInvalidID
 	}
 
-	// If you are not an admin and looking to delete someone other than yourself.
-	if !claims.Authorized(auth.RoleAdmin) && claims.Subject != userID {
+	// If you are looking to delete someone other than yourself.
+	if claims.User.ID != userID {
 		return ErrForbidden
 	}
 
@@ -148,8 +148,8 @@ func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims,
 		return Info{}, ErrInvalidID
 	}
 
-	// If you are not an admin and looking to retrieve someone other than yourself.
-	if !claims.Authorized(auth.RoleAdmin) && claims.Subject != userID {
+	// If you are looking to retrieve someone other than yourself.
+	if claims.User.ID != userID {
 		return Info{}, ErrForbidden
 	}
 
@@ -201,15 +201,15 @@ func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claim
 		return Info{}, errors.Wrapf(err, "selecting user %q", name)
 	}
 
-	// If you are not an admin and looking to retrieve someone other than yourself.
-	if !claims.Authorized(auth.RoleAdmin) && claims.Subject != usr.ID {
+	// If you are looking to retrieve someone other than yourself.
+	if claims.User.ID != usr.ID {
 		return Info{}, ErrForbidden
 	}
 
 	return usr, nil
 }
 
-// Authenticate finds a user by their email and verifies their password. On
+// Authenticate finds a user by their name and verifies their password. On
 // success it returns a Claims Info representing this user. The claims can be
 // used to generate a token for future authentication.
 func (u User) Authenticate(ctx context.Context, traceID string, now time.Time, name, password string) (auth.Claims, error) {
@@ -250,11 +250,12 @@ func (u User) Authenticate(ctx context.Context, traceID string, now time.Time, n
 	// and generate their token.
 	claims := auth.Claims{
 		StandardClaims: jwt.StandardClaims{
-			Issuer:    "service project",
-			Subject:   usr.ID,
-			Audience:  "students",
 			ExpiresAt: now.Add(time.Hour).Unix(),
 			IssuedAt:  now.Unix(),
+		},
+		User: auth.User{
+			Username: usr.Name,
+			ID: usr.ID,
 		},
 	}
 

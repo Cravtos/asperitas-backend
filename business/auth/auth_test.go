@@ -48,13 +48,13 @@ func TestAuth(t *testing.T) {
 
 			claims := auth.Claims{
 				StandardClaims: jwt.StandardClaims{
-					Issuer:    "service project",
-					Subject:   "5cf37266-3473-4006-984f-9325122678b7",
-					Audience:  "students",
 					ExpiresAt: time.Now().Add(8760 * time.Hour).Unix(),
 					IssuedAt:  time.Now().Unix(),
 				},
-				Roles: []string{auth.RoleAdmin},
+				User: auth.User{
+					Username: "test_name",
+					ID: "test_id",
+				},
 			}
 
 			token, err := a.GenerateToken(keyID, claims)
@@ -69,19 +69,19 @@ func TestAuth(t *testing.T) {
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to parse the claims.", success, testID)
 
-			if exp, got := len(claims.Roles), len(parsedClaims.Roles); exp != got {
+			if exp, got := claims.User.Username, parsedClaims.User.Username; exp != got {
 				t.Logf("\t\tTest %d:\texp: %d", testID, exp)
 				t.Logf("\t\tTest %d:\tgot: %d", testID, got)
-				t.Fatalf("\t%s\tTest %d:\tShould have the expected number of roles: %v", failed, testID, err)
+				t.Fatalf("\t%s\tTest %d:\tShould have the expected username: %v", failed, testID, err)
 			}
-			t.Logf("\t%s\tTest %d:\tShould have the expected number of roles.", success, testID)
+			t.Logf("\t%s\tTest %d:\tShould have the expected username.", success, testID)
 
-			if exp, got := claims.Roles[0], parsedClaims.Roles[0]; exp != got {
-				t.Logf("\t\tTest %d:\texp: %v", testID, exp)
-				t.Logf("\t\tTest %d:\tgot: %v", testID, got)
-				t.Fatalf("\t%s\tTest %d:\tShould have the expected roles: %v", failed, testID, err)
+			if exp, got := claims.User.ID, parsedClaims.User.ID; exp != got {
+				t.Logf("\t\tTest %d:\texp: %d", testID, exp)
+				t.Logf("\t\tTest %d:\tgot: %d", testID, got)
+				t.Fatalf("\t%s\tTest %d:\tShould have the expected ID: %v", failed, testID, err)
 			}
-			t.Logf("\t%s\tTest %d:\tShould have the expected roles.", success, testID)
+			t.Logf("\t%s\tTest %d:\tShould have the expected ID.", success, testID)
 		}
 	}
 }

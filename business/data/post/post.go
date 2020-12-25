@@ -47,9 +47,9 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	defer span.End()
 
 	post := Info{
-		ID:          uuid.New().String(),
-		// Author:      Author{Username: "", ID: claims.Subject}, // TODO: enter user name from claims or form db by id
-		Type:		 np.Type,
+		ID:         uuid.New().String(),
+		//Author:     Author{Username: claims.User.Username, ID: claims.User.ID},
+		Type:		np.Type,
 		Title:		np.Title,
 		URL:		np.URL,
 		Category:	np.Category,
@@ -86,8 +86,8 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 			post.Text, post.DateCreated),
 	)
 
-	if _, err := p.db.ExecContext(ctx, q, post.ID, post.Score, post.Views, post.Type, post.Title, post.URL, post.Category,
-		post.Text, post.DateCreated); err != nil {
+	if _, err := p.db.ExecContext(ctx, q, post.ID, post.Score, post.Views, post.Type, post.Title, post.URL,
+		post.Category, post.Text, post.DateCreated); err != nil {
 		return Info{}, errors.Wrap(err, "inserting product")
 	}
 
@@ -102,6 +102,7 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 	if _, err := uuid.Parse(postID); err != nil {
 		return ErrInvalidID
 	}
+
 
 	//// If you are not an admin. // Todo: check if auth.Claims.Subjects == post.Author.ID
 	//if !claims.Authorized(auth.RoleAdmin) {
@@ -163,12 +164,12 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 		database.Log(q, postID),
 	)
 
-	var prd Info
-	if err := p.db.GetContext(ctx, &prd, q, postID); err != nil {
+	var post Info
+	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
 		return Info{}, errors.Wrap(err, "selecting post by ID")
 	}
 
-	return prd, nil
+	return post, nil
 }
 
 // QueryByCat finds the post identified by a given Category.
@@ -186,15 +187,15 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 		database.Log(q, category),
 	)
 
-	var prd Info
-	if err := p.db.GetContext(ctx, &prd, q, category); err != nil {
+	var post Info
+	if err := p.db.GetContext(ctx, &post, q, category); err != nil {
 		if err == sql.ErrNoRows { // Todo: check if error is correct
 			return Info{}, ErrNotFound
 		}
 		return Info{}, errors.Wrap(err, "selecting posts by category")
 	}
 
-	return prd, nil
+	return post, nil
 }
 
 // // QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from DB

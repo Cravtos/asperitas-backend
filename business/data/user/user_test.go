@@ -42,13 +42,13 @@ func TestUser(t *testing.T) {
 
 			claims := auth.Claims{
 				StandardClaims: jwt.StandardClaims{
-					Issuer:    "service project",
-					Subject:   usr.ID,
-					Audience:  "students",
 					ExpiresAt: now.Add(time.Hour).Unix(),
 					IssuedAt:  now.Unix(),
 				},
-				Roles: []string{auth.RoleUser},
+				User: auth.User{
+					Username: usr.Name,
+					ID: usr.ID,
+				},
 			}
 
 			saved, err := u.QueryByID(ctx, traceID, claims, usr.ID)
@@ -147,7 +147,6 @@ func TestAuthenticate(t *testing.T) {
 
 			nu := user.NewUser{
 				Name:            "Anna Walker",
-				Roles:           []string{auth.RoleAdmin},
 				Password:        "goroutines",
 			}
 
@@ -164,13 +163,13 @@ func TestAuthenticate(t *testing.T) {
 			t.Logf("\t%s\tTest %d:\tShould be able to generate claims.", tests.Success, testID)
 
 			want := auth.Claims{
-				Roles: usr.Roles,
 				StandardClaims: jwt.StandardClaims{
-					Issuer:    "service project",
-					Subject:   usr.ID,
-					Audience:  "students",
 					ExpiresAt: now.Add(time.Hour).Unix(),
 					IssuedAt:  now.Unix(),
+				},
+				User: auth.User{
+					Username: usr.Name,
+					ID: usr.ID,
 				},
 			}
 

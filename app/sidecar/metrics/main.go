@@ -114,7 +114,6 @@ func run(log *log.Logger) error {
 	}
 
 	// Create a stdout publisher.
-	// TODO: Respect the cfg.publish.to config option.
 	stdout := publisher.NewStdout(log)
 
 	// Start the publisher to collect/publish metrics.

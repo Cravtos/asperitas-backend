@@ -9,6 +9,7 @@ import (
 
 	"github.com/cravtos/asperitas-backend/business/auth" // Import is removed in final PR
 	"github.com/cravtos/asperitas-backend/business/data/post"
+	"github.com/cravtos/asperitas-backend/business/data/user"
 	"github.com/cravtos/asperitas-backend/business/mid"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/jmoiron/sqlx"
@@ -28,15 +29,19 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.HandleDebug(http.MethodGet, "/readiness", cg.readiness)
 	app.HandleDebug(http.MethodGet, "/liveness", cg.liveness)
 
-	// Todo: user
-	//app.Handle(http.MethodPost, "/api/register", ug.register)
-	//app.Handle(http.MethodPost, "/api/login", ug.login)
+	ug := userGroup {
+		user: user.New(log, db),
+	}
+
+	app.Handle(http.MethodPost, "/api/register", ug.register)
+	app.Handle(http.MethodPost, "/api/login", ug.login)
 
 	// Todo: post
 	//Register post and post endpoints
 	p := postGroup {
 		post: post.New(log, db),
 	}
+
 	app.Handle(http.MethodGet, "/api/posts/", p.query)
 	app.Handle(http.MethodGet, "/api/posts/:category", p.queryByCat)
 	app.Handle(http.MethodGet, "/api/post/:post_id", p.queryByID)

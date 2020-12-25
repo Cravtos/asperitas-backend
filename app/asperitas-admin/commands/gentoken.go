@@ -39,7 +39,6 @@ func GenToken(traceID string, log *log.Logger, cfg database.Config, id string, p
 		StandardClaims: jwt.StandardClaims{
 			Subject: id,
 		},
-		Roles: []string{auth.RoleAdmin},
 	}
 
 	usr, err := u.QueryByID(ctx, traceID, claims, id)

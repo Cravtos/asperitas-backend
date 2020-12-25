@@ -30,9 +30,9 @@ func Seed(db *sqlx.DB) error {
 // may need to be broken up.
 const seeds = `
 -- Create admin and regular User with password "gophers"
-INSERT INTO users (user_id, name, roles, password_hash, date_created) VALUES
-	('5cf37266-3473-4006-984f-9325122678b7', 'Admin Gopher', '{ADMIN,USER}', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', '2019-03-24 00:00:00'),
-	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'User Gopher', '{USER}', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', '2019-03-24 00:00:00')
+INSERT INTO users (user_id, name, password_hash, date_created) VALUES
+	('5cf37266-3473-4006-984f-9325122678b7', 'Admin Gopher', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', '2019-03-24 00:00:00'),
+	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'User Gopher', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', '2019-03-24 00:00:00')
 	ON CONFLICT DO NOTHING;
 
 INSERT INTO posts (post_id, score, views, type, title, url, category, text, date_created) VALUES
