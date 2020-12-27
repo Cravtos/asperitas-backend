@@ -31,12 +31,17 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 
 	_, err := ug.user.Create(ctx, v.TraceID, nu, v.Now)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "unable to create user with name %s", nu.Name)
 	}
 
 	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, nu.Name, nu.Password)
 	if err != nil {
-		return err
+		switch err {
+		case user.ErrAuthenticationFailure:
+			return web.NewRequestError(err, http.StatusForbidden)
+		default:
+			return errors.Wrapf(err, "unable to authenticate user with name %s", nu.Name)
+		}
 	}
 
 	var tkn struct {
@@ -71,7 +76,12 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, u.Name, u.Password)
 	if err != nil {
-		return err
+		switch err {
+		case user.ErrAuthenticationFailure:
+			return web.NewRequestError(err, http.StatusForbidden)
+		default:
+			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Name)
+		}
 	}
 
 	var tkn struct {
