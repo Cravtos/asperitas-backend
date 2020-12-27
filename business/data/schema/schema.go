@@ -54,4 +54,13 @@ CREATE TABLE posts (
 	PRIMARY KEY (post_id)
 );`,
 	},
+	{
+		Version:     1.3,
+		Description: "add authors in table posts",
+		Script: `
+	alter table posts add column author_id UUID;
+	alter table posts add constraint posts_author_fk
+	FOREIGN KEY(author_id)	REFERENCES users(user_id);
+`,
+	},
 }
