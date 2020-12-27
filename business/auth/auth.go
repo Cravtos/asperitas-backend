@@ -73,13 +73,18 @@ type Auth struct {
 	keyFunc   func(t *jwt.Token) (interface{}, error)
 	parser    *jwt.Parser
 	keys      Keys
+	GetKID	  func() string
 }
 
 // New creates an *Authenticator for use.
-func New(algorithm string, lookup PublicKeyLookup, keys Keys) (*Auth, error) {
+func New(algorithm string, defaultKID string, lookup PublicKeyLookup, keys Keys) (*Auth, error) {
 	method := jwt.GetSigningMethod(algorithm)
 	if method == nil {
 		return nil, errors.Errorf("unknown algorithm %v", algorithm)
+	}
+
+	getKID := func() string {
+		return defaultKID
 	}
 
 	keyFunc := func(t *jwt.Token) (interface{}, error) {
@@ -105,6 +110,7 @@ func New(algorithm string, lookup PublicKeyLookup, keys Keys) (*Auth, error) {
 		algorithm: algorithm,
 		method:    method,
 		keyFunc:   keyFunc,
+		GetKID:	   getKID,
 		parser:    &parser,
 		keys:      keys,
 	}

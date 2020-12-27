@@ -61,7 +61,7 @@ func GenToken(traceID string, log *log.Logger, cfg database.Config, id string, p
 	// to the corresponding public key, the algorithms to use (RS256), and the
 	// key lookup function to perform the actual retrieve of the KID to public
 	// key lookup.
-	a, err := auth.New(algorithm, lookup, auth.Keys{keyID: privateKey})
+	a, err := auth.New(algorithm, keyID, lookup, auth.Keys{keyID: privateKey})
 	if err != nil {
 		return errors.Wrap(err, "constructing auth")
 	}

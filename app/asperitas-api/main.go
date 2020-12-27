@@ -138,7 +138,7 @@ func run(log *log.Logger) error {
 		return nil, fmt.Errorf("no public key found for the specified kid: %s", kid)
 	}
 
-	auth, err := auth.New(cfg.Auth.Algorithm, lookup, auth.Keys{cfg.Auth.KeyID: privateKey})
+	auth, err := auth.New(cfg.Auth.Algorithm, cfg.Auth.KeyID, lookup, auth.Keys{cfg.Auth.KeyID: privateKey})
 	if err != nil {
 		return errors.Wrap(err, "constructing auth")
 	}

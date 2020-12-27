@@ -43,8 +43,8 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	// todo: find a way to get kid without hardcoding
-	tkn.Token, err = ug.auth.GenerateToken("54bb2165-71e1-41a6-af3e-7da4a0e1e2c1", claims)
+	kid := ug.auth.GetKID()
+	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
 	if err != nil {
 		return errors.Wrapf(err, "generating token")
 	}
@@ -78,8 +78,8 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	// todo: find a way to get kid without hardcoding
-	tkn.Token, err = ug.auth.GenerateToken("54bb2165-71e1-41a6-af3e-7da4a0e1e2c1", claims)
+	kid := ug.auth.GetKID()
+	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
 	if err != nil {
 		return errors.Wrapf(err, "generating token")
 	}
