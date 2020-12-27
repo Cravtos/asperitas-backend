@@ -36,7 +36,6 @@ var (
 type User struct {
 	log *log.Logger
 	db  *sqlx.DB
-	auth *auth.Auth
 }
 
 // New constructs a User for api access.

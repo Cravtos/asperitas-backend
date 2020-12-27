@@ -40,7 +40,7 @@ func TestAuth(t *testing.T) {
 				return nil, fmt.Errorf("no public key found for the specified kid: %s", kid)
 			}
 
-			a, err := auth.New("RS256", lookup, auth.Keys{keyID: privateKey})
+			a, err := auth.New("RS256", keyID, lookup, auth.Keys{keyID: privateKey})
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to create an authenticator: %v", failed, testID, err)
 			}
@@ -70,15 +70,15 @@ func TestAuth(t *testing.T) {
 			t.Logf("\t%s\tTest %d:\tShould be able to parse the claims.", success, testID)
 
 			if exp, got := claims.User.Username, parsedClaims.User.Username; exp != got {
-				t.Logf("\t\tTest %d:\texp: %d", testID, exp)
-				t.Logf("\t\tTest %d:\tgot: %d", testID, got)
+				t.Logf("\t\tTest %d:\texp: %s", testID, exp)
+				t.Logf("\t\tTest %d:\tgot: %s", testID, got)
 				t.Fatalf("\t%s\tTest %d:\tShould have the expected username: %v", failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould have the expected username.", success, testID)
 
 			if exp, got := claims.User.ID, parsedClaims.User.ID; exp != got {
-				t.Logf("\t\tTest %d:\texp: %d", testID, exp)
-				t.Logf("\t\tTest %d:\tgot: %d", testID, got)
+				t.Logf("\t\tTest %d:\texp: %s", testID, exp)
+				t.Logf("\t\tTest %d:\tgot: %s", testID, got)
 				t.Fatalf("\t%s\tTest %d:\tShould have the expected ID: %v", failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould have the expected ID.", success, testID)
