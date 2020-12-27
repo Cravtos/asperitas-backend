@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/user"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
@@ -12,6 +13,7 @@ import (
 
 type userGroup struct {
 	user user.User
+	auth *auth.Auth
 }
 
 func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -38,15 +40,16 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 		return err
 	}
 
-	//var tkn struct {
-	//	Token string `json:"token"`
-	//}
-	//tkn.Token, err = authenticator.GenerateToken(claims)
-	//if err != nil {
-	//	return errors.Wrap(err, "generating token")
-	//}
+	var tkn struct {
+		Token string `json:"token"`
+	}
+	// todo: find a way to get kid without hardcoding
+	tkn.Token, err = ug.auth.GenerateToken("54bb2165-71e1-41a6-af3e-7da4a0e1e2c1", claims)
+	if err != nil {
+		return errors.Wrapf(err, "generating token")
+	}
 
-	return web.Respond(ctx, w, claims, http.StatusOK)
+	return web.Respond(ctx, w, tkn, http.StatusOK)
 }
 
 func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -72,13 +75,14 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return err
 	}
 
-	//var tkn struct {
-	//	Token string `json:"token"`
-	//}
-	//tkn.Token, err = u.authenticator.GenerateToken(claims)
-	//if err != nil {
-	//	return errors.Wrap(err, "generating token")
-	//}
+	var tkn struct {
+		Token string `json:"token"`
+	}
+	// todo: find a way to get kid without hardcoding
+	tkn.Token, err = ug.auth.GenerateToken("54bb2165-71e1-41a6-af3e-7da4a0e1e2c1", claims)
+	if err != nil {
+		return errors.Wrapf(err, "generating token")
+	}
 
-	return web.Respond(ctx, w, claims, http.StatusOK)
+	return web.Respond(ctx, w, tkn, http.StatusOK)
 }

@@ -32,20 +32,6 @@ func GenToken(traceID string, log *log.Logger, cfg database.Config, id string, p
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	u := user.New(log, db)
-
-	// The call to retrieve a user requires an Admin role by the caller.
-	claims := auth.Claims{
-		StandardClaims: jwt.StandardClaims{
-			Subject: id,
-		},
-	}
-
-	usr, err := u.QueryByID(ctx, traceID, claims, id)
-	if err != nil {
-		return errors.Wrap(err, "retrieve user")
-	}
-
 	privatePEM, err := ioutil.ReadFile(privateKeyFile)
 	if err != nil {
 		return errors.Wrap(err, "reading PEM private key file")
@@ -78,6 +64,20 @@ func GenToken(traceID string, log *log.Logger, cfg database.Config, id string, p
 	a, err := auth.New(algorithm, lookup, auth.Keys{keyID: privateKey})
 	if err != nil {
 		return errors.Wrap(err, "constructing auth")
+	}
+
+	u := user.New(log, db)
+
+	// The call to retrieve a user requires an Admin role by the caller.
+	claims := auth.Claims{
+		StandardClaims: jwt.StandardClaims{
+			Subject: id,
+		},
+	}
+
+	usr, err := u.QueryByID(ctx, traceID, claims, id)
+	if err != nil {
+		return errors.Wrap(err, "retrieve user")
 	}
 
 	// Generating a token requires defining a set of claims. In this applications

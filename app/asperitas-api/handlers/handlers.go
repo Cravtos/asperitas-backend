@@ -31,6 +31,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 
 	ug := userGroup {
 		user: user.New(log, db),
+		auth: a,
 	}
 
 	app.Handle(http.MethodPost, "/api/register", ug.register)
