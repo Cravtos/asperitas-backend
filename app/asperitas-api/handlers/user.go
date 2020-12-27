@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/trace"
 	"net/http"
-	"time"
 )
 
 type userGroup struct {
@@ -30,12 +29,12 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	_, err := ug.user.Create(ctx, v.TraceID, nu, time.Now())
+	_, err := ug.user.Create(ctx, v.TraceID, nu, v.Now)
 	if err != nil {
 		return err
 	}
 
-	claims, err := ug.user.Authenticate(ctx, v.TraceID, time.Now(), nu.Name, nu.Password)
+	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, nu.Name, nu.Password)
 	if err != nil {
 		return err
 	}
@@ -70,7 +69,7 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	claims, err := ug.user.Authenticate(ctx, v.TraceID, time.Now(), u.Name, u.Password)
+	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, u.Name, u.Password)
 	if err != nil {
 		return err
 	}
