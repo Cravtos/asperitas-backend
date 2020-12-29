@@ -23,7 +23,6 @@ func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return web.NewShutdownError("web value missing from context")
 	}
 
-
 	posts, err := pg.post.Query(ctx, v.TraceID)
 	if err != nil {
 		return err
