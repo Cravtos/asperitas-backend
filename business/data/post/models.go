@@ -60,7 +60,6 @@ type Info interface {
 	Info()
 }
 
-// todo: split into two (InfoText, InfoLink or smth like that)
 // InfoText represents an individual text post which is sent to user.
 type InfoText struct {
 	ID               string    `json:"id"`

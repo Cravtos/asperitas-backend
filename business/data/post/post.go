@@ -45,7 +45,6 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.create")
 	defer span.End()
 
-	// todo: split responses into two (InfoText, InfoLink or smth like that)
 	post := struct {
 		ID               string
 		Author           Author
