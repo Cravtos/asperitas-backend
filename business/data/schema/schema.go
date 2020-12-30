@@ -62,7 +62,7 @@ CREATE TABLE posts (
 CREATE TABLE votes (
 	post_id          UUID references posts(post_id),
 	user_id          UUID references users(user_id),
-	vote             INT,
+	vote             INT
 );`,
 	},
 	{

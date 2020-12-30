@@ -187,7 +187,6 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		database.Log(qPost),
 	)
 
-	//todo: finish
 	var posts []PostDB
 	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
 		return nil, errors.Wrap(err, "selecting posts")
@@ -195,9 +194,15 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 
 	var info []Info
 	for _, post := range posts {
+		const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
+
+		var author Author
+		if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
+			return nil, errors.Wrap(err, "selecting votes")
+		}
 		// todo: divide into functions
 		// Get posts votes
-		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
+		const qVotes = `SELECT user_id as User, vote as Vote FROM votes WHERE post_id = $1`
 
 		p.log.Printf("%s: %s: %s", traceID, "post.Query",
 			database.Log(qPost),
@@ -208,27 +213,63 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 			return nil, errors.Wrap(err, "selecting votes")
 		}
 
-		/* todo: think about how to get Authors from the comments
-		   (1. one more db requests for every comment or keep two values in db about author)
-		   (2. write your own marshalling function)
-		   (3. take away Author from Comment (or even from Info))
-		   (4. try request to two tables filling []Comment)
-		*/
-
 		// Get their comments
-		const qComments = `SELECT * FROM comments WHERE post_id = $1`
+		const qComments = `SELECT name, user_id, cm.date_created, body, comment_id FROM comments cm join users using(user_id) WHERE post_id = $1`
 
 		p.log.Printf("%s: %s: %s", traceID, "post.Query",
-			database.Log(qPost),
+			database.Log(qComments),
 		)
 
-		var comments []CommentDB
-		if err := p.db.SelectContext(ctx, &comments, qVotes, post.ID); err != nil {
-			return nil, errors.Wrap(err, "selecting votes")
+		var rawComments []CommentWithAuthor
+		if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting comments")
 		}
 
-		// Get their authors
-
+		comments := make([]Comment, 0)
+		for _, comment := range rawComments {
+			author := Author{
+				Username: comment.AuthorName,
+				ID:       comment.AuthorID,
+			}
+			comments = append(comments, Comment{
+				DateCreated: comment.DateCreated,
+				Author:      author,
+				Body:        comment.Body,
+				ID:          comment.ID,
+			})
+		}
+		p.log.Printf("%s: %s: %s with %v", traceID, "post.Query",
+			database.Log(qComments), comments,
+		)
+		if post.Type == "url" {
+			info = append(info, InfoLink{
+				ID:               post.ID,
+				Score:            post.Score,
+				Views:            post.Views,
+				Title:            post.Title,
+				Payload:          post.Payload,
+				Category:         post.Category,
+				DateCreated:      post.DateCreated,
+				Author:           author,
+				Votes:            votes,
+				Comments:         comments,
+				UpvotePercentage: 100,
+			})
+		} else {
+			info = append(info, InfoText{
+				ID:               post.ID,
+				Score:            post.Score,
+				Views:            post.Views,
+				Title:            post.Title,
+				Payload:          post.Payload,
+				Category:         post.Category,
+				DateCreated:      post.DateCreated,
+				Author:           author,
+				Votes:            votes,
+				Comments:         comments,
+				UpvotePercentage: 100,
+			})
+		}
 	}
 
 	return info, nil

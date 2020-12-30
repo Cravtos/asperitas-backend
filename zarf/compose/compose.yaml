@@ -16,6 +16,8 @@ services:
 
   db:
     container_name: asperitas_db
+    environment:
+      - POSTGRES_PASSWORD=postgres
     networks:
       - shared-network
     image: postgres:13-alpine

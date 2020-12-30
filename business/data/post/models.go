@@ -2,10 +2,12 @@ package post
 
 import "time"
 
+// Todo: consider differ structs for "DB" and "JSON" use
+
 // Author represents info about author
 type Author struct {
-	Username string `json:"username"`
-	ID       string `json:"id"`
+	Username string `db:"name" json:"name"`
+	ID       string `db:"user_id" json:"id"`
 }
 
 // Vote represents info about user vote.
@@ -16,10 +18,18 @@ type Vote struct {
 
 // Comment represents info about comments for the post.
 type Comment struct {
-	DateCreated time.Time `json:"created"`
+	DateCreated time.Time `db:"date_created" json:"created"`
 	Author      Author    `json:"author"`
-	Body        string    `json:"body"`
-	ID          string    `json:"id"`
+	Body        string    `db:"body" json:"body"`
+	ID          string    `db:"comment_id" json:"id"`
+}
+
+type CommentWithAuthor struct {
+	DateCreated time.Time `db:"date_created"`
+	AuthorName  string    `db:"name"`
+	AuthorID    string    `db:"user_id"`
+	Body        string    `db:"body"`
+	ID          string    `db:"comment_id"`
 }
 
 // todo: find more appropriate name
