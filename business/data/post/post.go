@@ -149,12 +149,14 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 		return ErrInvalidID
 	}
 
-	post, err := p.QueryByID(ctx, traceID, postID)
-	if err != nil {
-		errors.Wrap(err, "selecting post by ID")
+	const qPost = `SELECT user_id FROM posts WHERE post_id = $1`
+
+	var author Author
+	if err := p.db.GetContext(ctx, &author, qPost, postID); err != nil {
+		return errors.Wrap(err, "selecting post by ID")
 	}
 
-	if claims.User.ID == post.UserID {
+	if claims.User.ID == author.ID {
 		return ErrForbidden
 	}
 
@@ -275,14 +277,14 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 	return info, nil
 }
 
-// Todo: add function returning Info and move that function to another folder
+// todo: divide into functions
 // QueryByID finds the post identified by a given ID.
-func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (PostDB, error) {
+func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyid")
 	defer span.End()
 
 	if _, err := uuid.Parse(postID); err != nil {
-		return PostDB{}, ErrInvalidID
+		return InfoText{}, ErrInvalidID
 	}
 
 	const q = `
@@ -297,10 +299,76 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Pos
 
 	var post PostDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
-		return PostDB{}, errors.Wrap(err, "selecting post by ID")
+		return InfoText{}, errors.Wrap(err, "selecting post by ID")
 	}
 
-	return post, nil
+	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
+
+	var author Author
+	if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
+		return nil, errors.Wrap(err, "selecting votes")
+	}
+	const qVotes = `SELECT user_id as User, vote as Vote FROM votes WHERE post_id = $1`
+
+	var votes []Vote
+	if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
+		return nil, errors.Wrap(err, "selecting votes")
+	}
+
+	// Get their comments
+	const qComments = `SELECT name, user_id, cm.date_created, body, comment_id FROM comments cm join users using(user_id) WHERE post_id = $1`
+
+	p.log.Printf("%s: %s: %s", traceID, "post.Query",
+		database.Log(qComments),
+	)
+
+	var rawComments []CommentWithAuthor
+	if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
+		return nil, errors.Wrap(err, "selecting comments")
+	}
+
+	comments := make([]Comment, 0)
+	for _, comment := range rawComments {
+		author := Author{
+			Username: comment.AuthorName,
+			ID:       comment.AuthorID,
+		}
+		comments = append(comments, Comment{
+			DateCreated: comment.DateCreated,
+			Author:      author,
+			Body:        comment.Body,
+			ID:          comment.ID,
+		})
+	}
+	if post.Type == "url" {
+		return InfoLink{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           author,
+			Votes:            votes,
+			Comments:         comments,
+			UpvotePercentage: 100,
+		}, nil
+	} else {
+		return InfoText{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           author,
+			Votes:            votes,
+			Comments:         comments,
+			UpvotePercentage: 100,
+		}, nil
+	}
 }
 
 // QueryByCat finds the post identified by a given Category.
