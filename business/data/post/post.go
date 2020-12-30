@@ -40,40 +40,57 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 	}
 }
 
-// Create adds a Post to the database. It returns the created Post with fields like ID and DateCreated populated.
+// Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.create")
 	defer span.End()
 
 	// todo: split responses into two (InfoText, InfoLink or smth like that)
-	post := Info{
-		ID:         uuid.New().String(),
-		Author:     Author{Username: claims.User.Username, ID: claims.User.ID},
-		Type:		np.Type,
-		Title:		np.Title,
-		URL:		np.URL,
-		Category:	np.Category,
-		Text:		np.Text,
-		Votes:		[]Vote{{claims.User.Username, 1}},
-		Comments:	[]Comment{},
-		DateCreated: now.UTC(),
-		UpvotePercentage: 100,
+	post := struct {
+		ID               string
+		Author           Author
+		Type             string
+		Title            string
+		Category         string
+		Votes            []Vote
+		Score            int
+		Views            int
+		Comments         []Comment
+		DateCreated      time.Time
+		UpvotePercentage int
+		Payload          string
+	}{
+		uuid.New().String(),
+		Author{Username: claims.User.Username, ID: claims.User.ID},
+		np.Type,
+		np.Title,
+		np.Category,
+		[]Vote{{claims.User.Username, 1}},
+		1,
+		1,
+		[]Comment{},
+		now.UTC(),
+		100,
+		np.Text,
+	}
+	if post.Type == "url" {
+		post.Payload = np.URL
 	}
 
 	const qPost = `
 	INSERT INTO posts
-		(post_id, score, views, type, title, url, category, text, date_created, user_id)
+		(post_id, score, views, type, title, category, payload, date_created, user_id)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	p.log.Printf("%s: %s: %s", traceID, "post.Create",
-		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.URL, post.Category,
-			post.Text, post.DateCreated, post.Author.ID),
+		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.Payload, post.Category,
+			post.DateCreated, post.Author.ID),
 	)
 
 	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Score, post.Views, post.Type, post.Title,
-		post.URL, post.Category, post.Text, post.DateCreated, post.Author.ID); err != nil {
-		return Info{}, errors.Wrap(err, "creating post")
+		post.Category, post.Payload, post.DateCreated, post.Author.ID); err != nil {
+		return InfoText{}, errors.Wrap(err, "creating post")
 	}
 
 	const qVote = `
@@ -87,10 +104,40 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	)
 
 	if _, err := p.db.ExecContext(ctx, qVote, post.ID, post.Author.ID, 1); err != nil {
-		return Info{}, errors.Wrap(err, "upvote created post")
+		return InfoText{}, errors.Wrap(err, "upvote created post")
 	}
 
-	return post, nil
+	if post.Type == "url" {
+		info := InfoLink{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           post.Author,
+			Votes:            post.Votes,
+			Comments:         post.Comments,
+			UpvotePercentage: post.UpvotePercentage,
+		}
+		return info, nil
+	} else {
+		info := InfoText{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           post.Author,
+			Votes:            post.Votes,
+			Comments:         post.Comments,
+			UpvotePercentage: post.UpvotePercentage,
+		}
+		return info, nil
+	}
 }
 
 // Delete removes the product identified by a given ID.
@@ -107,7 +154,7 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 		errors.Wrap(err, "selecting post by ID")
 	}
 
-	if claims.User.ID == post.Author.ID {
+	if claims.User.ID == post.UserID {
 		return ErrForbidden
 	}
 
@@ -140,60 +187,61 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		database.Log(qPost),
 	)
 
-	// todo: uncomment and finish
-	//var posts []PostDB
-	//if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
-	//	return nil, errors.Wrap(err, "selecting posts")
-	//}
-	//
-	//var info []Info
-	//for _, post := range posts {
-	//	// todo: divide into functions
-	//	// Get posts votes
-	//	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
-	//
-	//	p.log.Printf("%s: %s: %s", traceID, "post.Query",
-	//		database.Log(qPost),
-	//	)
-	//
-	//	var votes []Vote
-	//	if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
-	//		return nil, errors.Wrap(err, "selecting votes")
-	//	}
-	//
-	//	/* todo: think about how to get Authors from the comments
-	//	   (1. one more db requests for every comment or keep two values in db about author)
-	//	   (2. write your own marshalling function)
-	//	*/
-	//	 */
-	//	// Get their comments
-	//	const qComments = `SELECT * FROM comments WHERE post_id = $1`
-	//
-	//	p.log.Printf("%s: %s: %s", traceID, "post.Query",
-	//		database.Log(qPost),
-	//	)
-	//
-	//	var comments []CommentDB
-	//	if err := p.db.SelectContext(ctx, &comments, qVotes, post.ID); err != nil {
-	//		return nil, errors.Wrap(err, "selecting votes")
-	//	}
-	//
-	//	// Get their authors
-	//
-	//}
+	//todo: finish
+	var posts []PostDB
+	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
+		return nil, errors.Wrap(err, "selecting posts")
+	}
 
+	var info []Info
+	for _, post := range posts {
+		// todo: divide into functions
+		// Get posts votes
+		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
+		p.log.Printf("%s: %s: %s", traceID, "post.Query",
+			database.Log(qPost),
+		)
 
-	return posts, nil
+		var votes []Vote
+		if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting votes")
+		}
+
+		/* todo: think about how to get Authors from the comments
+		   (1. one more db requests for every comment or keep two values in db about author)
+		   (2. write your own marshalling function)
+		   (3. take away Author from Comment (or even from Info))
+		   (4. try request to two tables filling []Comment)
+		*/
+
+		// Get their comments
+		const qComments = `SELECT * FROM comments WHERE post_id = $1`
+
+		p.log.Printf("%s: %s: %s", traceID, "post.Query",
+			database.Log(qPost),
+		)
+
+		var comments []CommentDB
+		if err := p.db.SelectContext(ctx, &comments, qVotes, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting votes")
+		}
+
+		// Get their authors
+
+	}
+
+	return info, nil
 }
 
+// Todo: add function returning Info and move that function to another folder
 // QueryByID finds the post identified by a given ID.
-func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
+func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (PostDB, error) {
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyid")
 	defer span.End()
 
 	if _, err := uuid.Parse(postID); err != nil {
-		return Info{}, ErrInvalidID
+		return PostDB{}, ErrInvalidID
 	}
 
 	const q = `
@@ -206,9 +254,9 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 		database.Log(q, postID),
 	)
 
-	var post Info
+	var post PostDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
-		return Info{}, errors.Wrap(err, "selecting post by ID")
+		return PostDB{}, errors.Wrap(err, "selecting post by ID")
 	}
 
 	return post, nil
@@ -232,9 +280,9 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 	var post Info
 	if err := p.db.GetContext(ctx, &post, q, category); err != nil {
 		if err == sql.ErrNoRows { // Todo: check if error is correct
-			return Info{}, ErrNotFound
+			return InfoText{}, ErrNotFound
 		}
-		return Info{}, errors.Wrap(err, "selecting posts by category")
+		return InfoText{}, errors.Wrap(err, "selecting posts by category")
 	}
 
 	return post, nil

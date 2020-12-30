@@ -41,7 +41,7 @@ func (pg postGroup) queryByID(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	params := web.Params(r)
-	pst, err := pg.post.QueryByID(ctx, v.TraceID, params["post_id"])
+	pst, err := pg.post.QueryByID(ctx, v.TraceID, params["post_id"]) // Todo: add func, returning Info instead of PostDB
 	if err != nil {
 		switch err {
 		case post.ErrInvalidID:
@@ -72,6 +72,7 @@ func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	// Todo: check if claims allow to create a post
 
+	// Todo: look at how Decode works if not all fields provided
 	var np post.NewPost
 	if err := web.Decode(r, &np); err != nil {
 		return errors.Wrapf(err, "unable to decode payload")

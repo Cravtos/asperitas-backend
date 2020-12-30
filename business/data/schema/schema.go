@@ -46,9 +46,8 @@ CREATE TABLE posts (
 	views            INT,
 	type             TEXT,
 	title            TEXT,
-	url              TEXT,
+	payload          TEXT,
 	category         TEXT,
-	text             TEXT,
 	date_created     TIMESTAMP,
 	
 	user_id			 UUID references users(user_id),
@@ -67,7 +66,7 @@ CREATE TABLE votes (
 );`,
 	},
 	{
-		Version:     1.3,
+		Version: 1.3,
 		Script: `
 CREATE TABLE comments (
 	comment_id       UUID,

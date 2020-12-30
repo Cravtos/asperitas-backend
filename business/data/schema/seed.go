@@ -35,9 +35,9 @@ INSERT INTO users (user_id, name, password_hash, date_created) VALUES
 	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'User Gopher', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', '2019-03-24 00:00:00')
 	ON CONFLICT DO NOTHING;
 
-INSERT INTO posts (post_id, score, views, type, title, url, category, text, date_created, user_id) VALUES
-	('a2b0639f-2cc6-44b8-b97b-15d69dbb511e', 321, 50, 'url', 'testpost', 'https://exmaple.com/', 'music', 'sometext', '2019-01-01 00:00:01.000001+00', '5cf37266-3473-4006-984f-9325122678b7'),
-	('72f8b983-3eb4-48db-9ed0-e45cc6bd716b', 123, 75, 'text', 'secondpost', 'https://exmaple.com/', 'funny', 'hahatext', '2019-01-01 00:00:02.000001+00', '45b5fbd3-755f-4379-8f07-a58d4a30fa2f')
+INSERT INTO posts (post_id, score, views, type, title, category, payload, date_created, user_id) VALUES
+	('a2b0639f-2cc6-44b8-b97b-15d69dbb511e', 321, 50, 'url', 'testpost',  'music', 'https://exmaple.com/', '2019-01-01 00:00:01.000001+00', '5cf37266-3473-4006-984f-9325122678b7'),
+	('72f8b983-3eb4-48db-9ed0-e45cc6bd716b', 123, 75, 'text', 'secondpost', 'funny', 'hahatext', '2019-01-01 00:00:02.000001+00', '45b5fbd3-755f-4379-8f07-a58d4a30fa2f')
 	ON CONFLICT DO NOTHING;
 
 INSERT INTO votes (post_id, user_id, vote) VALUES
