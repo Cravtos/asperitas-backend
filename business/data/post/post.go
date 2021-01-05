@@ -4,6 +4,7 @@ package post
 import (
 	"context"
 	"database/sql"
+	"github.com/cravtos/asperitas-backend/foundation/web"
 	"log"
 	"time"
 
@@ -45,34 +46,23 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.create")
 	defer span.End()
 
-	// todo: split responses into two (InfoText, InfoLink or smth like that)
-	post := struct {
-		ID               string
-		Author           Author
-		Type             string
-		Title            string
-		Category         string
-		Votes            []Vote
-		Score            int
-		Views            int
-		Comments         []Comment
-		DateCreated      time.Time
-		UpvotePercentage int
-		Payload          string
-	}{
-		uuid.New().String(),
-		Author{Username: claims.User.Username, ID: claims.User.ID},
-		np.Type,
-		np.Title,
-		np.Category,
-		[]Vote{{claims.User.Username, 1}},
-		1,
-		1,
-		[]Comment{},
-		now.UTC(),
-		100,
-		np.Text,
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return nil, web.NewShutdownError("web value missing from context")
 	}
+
+	post := PostDB {
+		ID: uuid.New().String(),
+		Score: 0,
+		Views: 0,
+		Title: np.Title,
+		Type: np.Type,
+		Category: np.Category,
+		Payload: np.Text,
+		DateCreated: v.Now,
+		UserID: claims.User.ID,
+	}
+
 	if post.Type == "url" {
 		post.Payload = np.URL
 	}
@@ -85,11 +75,11 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 
 	p.log.Printf("%s: %s: %s", traceID, "post.Create",
 		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.Payload, post.Category,
-			post.DateCreated, post.Author.ID),
+			post.DateCreated, post.UserID),
 	)
 
 	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Score, post.Views, post.Type, post.Title,
-		post.Category, post.Payload, post.DateCreated, post.Author.ID); err != nil {
+		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
 		return InfoText{}, errors.Wrap(err, "creating post")
 	}
 
@@ -100,13 +90,14 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 		($1, $2, $3)`
 
 	p.log.Printf("%s: %s: %s", traceID, "post.Create",
-		database.Log(qVote, post.ID, post.Author.ID, 1),
+		database.Log(qVote, post.ID, post.UserID, 1),
 	)
 
-	if _, err := p.db.ExecContext(ctx, qVote, post.ID, post.Author.ID, 1); err != nil {
+	if _, err := p.db.ExecContext(ctx, qVote, post.ID, post.UserID, 1); err != nil {
 		return InfoText{}, errors.Wrap(err, "upvote created post")
 	}
 
+	// todo: make a helper function to get Info from PostDB to reduce code
 	if post.Type == "url" {
 		info := InfoLink{
 			ID:               post.ID,
@@ -116,28 +107,40 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 			Payload:          post.Payload,
 			Category:         post.Category,
 			DateCreated:      post.DateCreated,
-			Author:           post.Author,
-			Votes:            post.Votes,
-			Comments:         post.Comments,
-			UpvotePercentage: post.UpvotePercentage,
+			Author:           Author{
+				Username: claims.User.Username,
+				ID: claims.User.ID,
+			},
+			Votes:            []Vote{
+				{User: claims.User.ID, Vote: 1},
+			},
+			Comments:         []Comment{},
+			UpvotePercentage: 100,
 		}
-		return info, nil
-	} else {
-		info := InfoText{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           post.Author,
-			Votes:            post.Votes,
-			Comments:         post.Comments,
-			UpvotePercentage: post.UpvotePercentage,
-		}
+
 		return info, nil
 	}
+
+	info := InfoText{
+		ID:               post.ID,
+		Score:            post.Score,
+		Views:            post.Views,
+		Title:            post.Title,
+		Payload:          post.Payload,
+		Category:         post.Category,
+		DateCreated:      post.DateCreated,
+		Author:           Author{
+			Username: claims.User.Username,
+			ID: claims.User.ID,
+		},
+		Votes:            []Vote{
+			{User: claims.User.ID, Vote: 1},
+		},
+		Comments:         []Comment{},
+		UpvotePercentage: 100,
+	}
+
+	return info, nil
 }
 
 // Delete removes the product identified by a given ID.
@@ -196,15 +199,16 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 
 	var info []Info
 	for _, post := range posts {
+		// todo: divide into functions
 		const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
 
 		var author Author
 		if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
-			return nil, errors.Wrap(err, "selecting votes")
+			return nil, errors.Wrap(err, "selecting authors")
 		}
-		// todo: divide into functions
+
 		// Get posts votes
-		const qVotes = `SELECT user_id as User, vote as Vote FROM votes WHERE post_id = $1`
+		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
 		p.log.Printf("%s: %s: %s", traceID, "post.Query",
 			database.Log(qPost),
@@ -216,7 +220,13 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		}
 
 		// Get their comments
-		const qComments = `SELECT name, user_id, cm.date_created, body, comment_id FROM comments cm join users using(user_id) WHERE post_id = $1`
+		const qComments = `
+		SELECT 
+			name, user_id, cm.date_created, body, comment_id 
+		FROM 
+			comments cm join users using(user_id) 
+		WHERE 
+			post_id = $1`
 
 		p.log.Printf("%s: %s: %s", traceID, "post.Query",
 			database.Log(qComments),
@@ -243,6 +253,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		p.log.Printf("%s: %s: %s with %v", traceID, "post.Query",
 			database.Log(qComments), comments,
 		)
+
 		if post.Type == "url" {
 			info = append(info, InfoLink{
 				ID:               post.ID,
@@ -255,29 +266,28 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 				Author:           author,
 				Votes:            votes,
 				Comments:         comments,
-				UpvotePercentage: 100,
+				UpvotePercentage: UpvotePercentage(votes),
 			})
-		} else {
-			info = append(info, InfoText{
-				ID:               post.ID,
-				Score:            post.Score,
-				Views:            post.Views,
-				Title:            post.Title,
-				Payload:          post.Payload,
-				Category:         post.Category,
-				DateCreated:      post.DateCreated,
-				Author:           author,
-				Votes:            votes,
-				Comments:         comments,
-				UpvotePercentage: 100,
-			})
+			continue
 		}
+		info = append(info, InfoText{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           author,
+			Votes:            votes,
+			Comments:         comments,
+			UpvotePercentage: UpvotePercentage(votes),
+		})
 	}
 
 	return info, nil
 }
 
-// todo: divide into functions
 // QueryByID finds the post identified by a given ID.
 func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyid")
@@ -316,7 +326,13 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 	}
 
 	// Get their comments
-	const qComments = `SELECT name, user_id, cm.date_created, body, comment_id FROM comments cm join users using(user_id) WHERE post_id = $1`
+	const qComments = `
+	SELECT 
+		name, user_id, cm.date_created, body, comment_id 
+	FROM 
+		comments cm join users using(user_id) 
+	WHERE 
+		post_id = $1`
 
 	p.log.Printf("%s: %s: %s", traceID, "post.Query",
 		database.Log(qComments),
@@ -340,6 +356,7 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 			ID:          comment.ID,
 		})
 	}
+
 	if post.Type == "url" {
 		return InfoLink{
 			ID:               post.ID,
@@ -354,22 +371,23 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 			Comments:         comments,
 			UpvotePercentage: 100,
 		}, nil
-	} else {
-		return InfoText{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           author,
-			Votes:            votes,
-			Comments:         comments,
-			UpvotePercentage: 100,
-		}, nil
 	}
+
+	return InfoText{
+		ID:               post.ID,
+		Score:            post.Score,
+		Views:            post.Views,
+		Title:            post.Title,
+		Payload:          post.Payload,
+		Category:         post.Category,
+		DateCreated:      post.DateCreated,
+		Author:           author,
+		Votes:            votes,
+		Comments:         comments,
+		UpvotePercentage: 100,
+	}, nil
 }
+
 
 // QueryByCat finds the post identified by a given Category.
 func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (Info, error) {
