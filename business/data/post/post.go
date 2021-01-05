@@ -316,9 +316,9 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 
 	var author Author
 	if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
-		return nil, errors.Wrap(err, "selecting votes")
+		return nil, errors.Wrap(err, "selecting author")
 	}
-	const qVotes = `SELECT user_id as User, vote as Vote FROM votes WHERE post_id = $1`
+	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
 	var votes []Vote
 	if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {

@@ -54,7 +54,7 @@ func run(log *log.Logger) error {
 		}
 		Publish struct {
 			To       string        `conf:"default:console"`
-			Interval time.Duration `conf:"default:5s"`
+			Interval time.Duration `conf:"default:60s"`
 		}
 	}
 	cfg.Version.SVN = build
