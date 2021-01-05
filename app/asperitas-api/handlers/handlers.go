@@ -52,7 +52,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	//app.Handle(http.MethodGet, "/api/posts/:post_id/upvote", p.upvote, mid.Authenticate(a))
 	//app.Handle(http.MethodGet, "/api/posts/:post_id/downvote", p.downvote, mid.Authenticate(a))
 	app.Handle(http.MethodDelete, "/api/post/:post_id", p.delete, mid.Authenticate(a))
-	//app.Handle(http.MethodGet, "/api/user/:user", p.queryByUser, mid.Authenticate(a))
+	app.Handle(http.MethodGet, "/api/user/:user", p.queryByUser, mid.Authenticate(a))
 
 	return app
 }

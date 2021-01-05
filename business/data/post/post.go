@@ -3,7 +3,6 @@ package post
 
 import (
 	"context"
-	"database/sql"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"log"
 	"time"
@@ -390,50 +389,219 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 
 
 // QueryByCat finds the post identified by a given Category.
-func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (Info, error) {
+func (p Post) QueryByCat(ctx context.Context, traceID string, category string) ([]Info, error) {
 	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybycat")
 	defer span.End()
 
-	const q = `
-	SELECT * FROM
-		posts
-	WHERE
-		category = $1`
+	// Get all posts
+	const qPost = `SELECT * FROM posts WHERE category = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "product.QueryByCat",
-		database.Log(q, category),
+	p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+		database.Log(qPost),
 	)
 
-	var post Info
-	if err := p.db.GetContext(ctx, &post, q, category); err != nil {
-		if err == sql.ErrNoRows { // Todo: check if error is correct
-			return InfoText{}, ErrNotFound
-		}
-		return InfoText{}, errors.Wrap(err, "selecting posts by category")
+	var posts []PostDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
+		return nil, errors.Wrap(err, "selecting posts")
 	}
 
-	return post, nil
+	var info []Info
+	for _, post := range posts {
+		// todo: divide into functions
+		const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
+
+		var author Author
+		if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
+			return nil, errors.Wrap(err, "selecting authors")
+		}
+
+		// Get posts votes
+		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
+
+		p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+			database.Log(qPost),
+		)
+
+		var votes []Vote
+		if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting votes")
+		}
+
+		// Get their comments
+		const qComments = `
+		SELECT 
+			name, user_id, cm.date_created, body, comment_id 
+		FROM 
+			comments cm join users using(user_id) 
+		WHERE 
+			post_id = $1`
+
+		p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+			database.Log(qComments),
+		)
+
+		var rawComments []CommentWithAuthor
+		if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting comments")
+		}
+
+		comments := make([]Comment, 0)
+		for _, comment := range rawComments {
+			author := Author{
+				Username: comment.AuthorName,
+				ID:       comment.AuthorID,
+			}
+			comments = append(comments, Comment{
+				DateCreated: comment.DateCreated,
+				Author:      author,
+				Body:        comment.Body,
+				ID:          comment.ID,
+			})
+		}
+		p.log.Printf("%s: %s: %s with %v", traceID, "post.QueryByCat",
+			database.Log(qComments), comments,
+		)
+
+		if post.Type == "url" {
+			info = append(info, InfoLink{
+				ID:               post.ID,
+				Score:            post.Score,
+				Views:            post.Views,
+				Title:            post.Title,
+				Payload:          post.Payload,
+				Category:         post.Category,
+				DateCreated:      post.DateCreated,
+				Author:           author,
+				Votes:            votes,
+				Comments:         comments,
+				UpvotePercentage: UpvotePercentage(votes),
+			})
+			continue
+		}
+		info = append(info, InfoText{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           author,
+			Votes:            votes,
+			Comments:         comments,
+			UpvotePercentage: UpvotePercentage(votes),
+		})
+	}
+
+	return info, nil
 }
 
-// // QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from PostDB
-//func (p Post) QueryByUser(ctx context.Context, traceID string, user string) (Info, error) {
-//	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyuser")
-//	defer span.End()
-//
-//	const q = `
-//	SELECT * FROM
-//		posts
-//	WHERE
-//		post_id = $1`
-//
-//	p.log.Printf("%s: %s: %s", traceID, "product.QueryByID",
-//		database.Log(q, postID),
-//	)
-//
-//	var prd Info
-//	if err := p.db.GetContext(ctx, &prd, q, postID); err != nil {
-//		return Info{}, errors.Wrap(err, "selecting single product")
-//	}
-//
-//	return prd, nil
-//}
+// QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from PostDB
+func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]Info, error) {
+	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyuser")
+	defer span.End()
+
+	// Get author
+	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
+
+	var author Author
+	if err := p.db.GetContext(ctx, &author, qAuthor, user); err != nil {
+		return nil, errors.Wrap(err, "selecting author")
+	}
+
+	// Get all posts
+	const qPost = `SELECT * FROM posts WHERE user_id = $1`
+
+	p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+		database.Log(qPost),
+	)
+
+	var posts []PostDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, author.ID); err != nil {
+		return nil, errors.Wrap(err, "selecting posts")
+	}
+
+	var info []Info
+	for _, post := range posts {
+		// todo: divide into functions
+
+		// Get posts votes
+		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
+
+		p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+			database.Log(qPost),
+		)
+
+		var votes []Vote
+		if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting votes")
+		}
+
+		// Get their comments
+		const qComments = `
+		SELECT
+			name, user_id, cm.date_created, body, comment_id
+		FROM
+			comments cm join users using(user_id)
+		WHERE
+			post_id = $1`
+
+		p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+			database.Log(qComments),
+		)
+
+		var rawComments []CommentWithAuthor
+		if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
+			return nil, errors.Wrap(err, "selecting comments")
+		}
+
+		comments := make([]Comment, 0)
+		for _, comment := range rawComments {
+			author := Author{
+				Username: comment.AuthorName,
+				ID:       comment.AuthorID,
+			}
+			comments = append(comments, Comment{
+				DateCreated: comment.DateCreated,
+				Author:      author,
+				Body:        comment.Body,
+				ID:          comment.ID,
+			})
+		}
+		p.log.Printf("%s: %s: %s with %v", traceID, "post.QueryByUser",
+			database.Log(qComments), comments,
+		)
+
+		if post.Type == "url" {
+			info = append(info, InfoLink{
+				ID:               post.ID,
+				Score:            post.Score,
+				Views:            post.Views,
+				Title:            post.Title,
+				Payload:          post.Payload,
+				Category:         post.Category,
+				DateCreated:      post.DateCreated,
+				Author:           author,
+				Votes:            votes,
+				Comments:         comments,
+				UpvotePercentage: UpvotePercentage(votes),
+			})
+			continue
+		}
+		info = append(info, InfoText{
+			ID:               post.ID,
+			Score:            post.Score,
+			Views:            post.Views,
+			Title:            post.Title,
+			Payload:          post.Payload,
+			Category:         post.Category,
+			DateCreated:      post.DateCreated,
+			Author:           author,
+			Votes:            votes,
+			Comments:         comments,
+			UpvotePercentage: UpvotePercentage(votes),
+		})
+	}
+
+	return info, nil
+}

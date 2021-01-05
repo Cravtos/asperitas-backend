@@ -70,8 +70,6 @@ func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.R
 		return web.NewShutdownError("claims missing from context")
 	}
 
-	// Todo: check if claims allow to create a post
-
 	// Todo: look at how Decode works if not all fields provided
 	var np post.NewPost
 	if err := web.Decode(r, &np); err != nil {
@@ -138,28 +136,27 @@ func (pg postGroup) queryByCat(ctx context.Context, w http.ResponseWriter, r *ht
 	return web.Respond(ctx, w, pst, http.StatusOK)
 }
 
-// Todo: finish query by user and uncomment this
-//func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-//	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.queryByUser")
-//	defer span.End()
-//
-//	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-//	if !ok {
-//		return web.NewShutdownError("web value missing from context")
-//	}
-//
-//	params := web.Params(r)
-//	pst, err := pg.post.QueryByUser(ctx, v.TraceID, params["user"])
-//	if err != nil {
-//		switch err {
-//		case product.ErrInvalidID:
-//			return web.NewRequestError(err, http.StatusBadRequest)
-//		case product.ErrNotFound:
-//			return web.NewRequestError(err, http.StatusNotFound)
-//		default:
-//			return errors.Wrapf(err, "ID: %s", params["user"])
-//		}
-//	}
-//
-//	return web.Respond(ctx, w, pst, http.StatusOK)
-//}
+func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.queryByUser")
+	defer span.End()
+
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	params := web.Params(r)
+	pst, err := pg.post.QueryByUser(ctx, v.TraceID, params["user"])
+	if err != nil {
+		switch err {
+		case post.ErrInvalidID:
+			return web.NewRequestError(err, http.StatusBadRequest)
+		case post.ErrNotFound:
+			return web.NewRequestError(err, http.StatusNotFound)
+		default:
+			return errors.Wrapf(err, "ID: %s", params["user"])
+		}
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusOK)
+}
