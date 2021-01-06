@@ -19,7 +19,6 @@ const KeyValues ctxKey = 1
 
 // Values represent state for each request.
 type Values struct {
-	TraceID    string
 	Now        time.Time
 	StatusCode int
 }
@@ -46,14 +45,6 @@ type App struct {
 
 // NewApp creates an App value that handle a set of routes for the application.
 func NewApp(shutdown chan os.Signal, mw ...Middleware) *App {
-
-	// Create an OpenTelemetry HTTP Handler which wraps our router. This will start
-	// the initial span and annotate it with information about the request/response.
-	//
-	// This is configured to use the W3C TraceContext standard to set the remote
-	// parent if an client request includes the appropriate headers.
-	// https://w3c.github.io/trace-context/
-
 	mux := httptreemux.NewContextMux()
 
 	return &App{

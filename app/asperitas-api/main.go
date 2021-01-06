@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
-	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,9 +13,12 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf"
-	"github.com/cravtos/asperitas-backend/app/asperitas-api/handlers"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
+
+	"github.com/cravtos/asperitas-backend/app/asperitas-api/handlers"
+	"github.com/cravtos/asperitas-backend/business/auth"
+	"github.com/cravtos/asperitas-backend/foundation/database"
 )
 
 // build is the git version of this program. It is set using build flags in the makefile.

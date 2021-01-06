@@ -8,7 +8,6 @@ import (
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/jmoiron/sqlx"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type checkGroup struct {
@@ -20,8 +19,6 @@ type checkGroup struct {
 // Do not respond by just returning an error because further up in the call
 // stack it will interpret that as a non-trusted error.
 func (cg checkGroup) readiness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.check.readiness")
-	defer span.End()
 
 	status := "ok"
 	statusCode := http.StatusOK
@@ -44,8 +41,6 @@ func (cg checkGroup) readiness(ctx context.Context, w http.ResponseWriter, r *ht
 // namespace details via the Downward API. The Kubernetes environment variables
 // need to be set within your Pod/Deployment manifest.
 func (cg checkGroup) liveness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.check.liveness")
-	defer span.End()
 
 	host, err := os.Hostname()
 	if err != nil {

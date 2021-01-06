@@ -3,15 +3,13 @@ package post
 
 import (
 	"context"
-	"github.com/cravtos/asperitas-backend/foundation/web"
-	"log"
-	"time"
-
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"log"
+	"time"
 )
 
 var (
@@ -40,13 +38,7 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 }
 
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
-func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return nil, web.NewShutdownError("web value missing from context")
-	}
-
+func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
 	post := PostDB {
 		ID: uuid.New().String(),
 		Score: 0,
@@ -55,7 +47,7 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 		Type: np.Type,
 		Category: np.Category,
 		Payload: np.Text,
-		DateCreated: v.Now,
+		DateCreated: now,
 		UserID: claims.User.ID,
 	}
 
@@ -69,7 +61,7 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Create",
+	p.log.Printf("%s: %s: %s", "post.Create",
 		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.Payload, post.Category,
 			post.DateCreated, post.UserID),
 	)
@@ -85,7 +77,7 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 	VALUES
 		($1, $2, $3)`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Create",
+	p.log.Printf("%s: %s: %s", "post.Create",
 		database.Log(qVote, post.ID, post.UserID, 1),
 	)
 
@@ -140,7 +132,7 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 }
 
 // Delete removes the product identified by a given ID.
-func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, postID string) error {
+func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) error {
 
 	if _, err := uuid.Parse(postID); err != nil {
 		return ErrInvalidID
@@ -163,7 +155,7 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 	WHERE
 		post_id = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Delete",
+	p.log.Printf("%s: %s: %s", "post.Delete",
 		database.Log(q, postID),
 	)
 
@@ -175,12 +167,12 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 }
 
 // Query gets all Posts from the database.
-func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
+func (p Post) Query(ctx context.Context) ([]Info, error) {
 
 	// Get all posts
 	const qPost = `SELECT * FROM posts`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Query",
+	p.log.Printf("%s: %s: %s", "post.Query",
 		database.Log(qPost),
 	)
 
@@ -202,7 +194,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		// Get posts votes
 		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.Query",
+		p.log.Printf("%s: %s: %s", "post.Query",
 			database.Log(qVotes),
 		)
 
@@ -220,7 +212,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		WHERE 
 			post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.Query",
+		p.log.Printf("%s: %s: %s", "post.Query",
 			database.Log(qComments),
 		)
 
@@ -242,7 +234,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 				ID:          comment.ID,
 			})
 		}
-		p.log.Printf("%s: %s: %s with %v", traceID, "post.Query",
+		p.log.Printf("%s: %s: %s with %v", "post.Query",
 			database.Log(qComments), comments,
 		)
 
@@ -281,7 +273,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 }
 
 // QueryByID finds the post identified by a given ID.
-func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
+func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 
 	if _, err := uuid.Parse(postID); err != nil {
 		return InfoText{}, ErrInvalidID
@@ -293,7 +285,7 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 	WHERE
 		post_id = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "product.QueryByID",
+	p.log.Printf("%s: %s: %s", "product.QueryByID",
 		database.Log(q, postID),
 	)
 
@@ -325,7 +317,7 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 	WHERE 
 		post_id = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Query",
+	p.log.Printf("%s: %s: %s", "post.Query",
 		database.Log(qComments),
 	)
 
@@ -381,12 +373,12 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 
 
 // QueryByCat finds the post identified by a given Category.
-func (p Post) QueryByCat(ctx context.Context, traceID string, category string) ([]Info, error) {
+func (p Post) QueryByCat(ctx context.Context,category string) ([]Info, error) {
 
 	// Get all posts
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+	p.log.Printf("%s: %s: %s", "post.QueryByCat",
 		database.Log(qPost),
 	)
 
@@ -408,7 +400,7 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 		// Get posts votes
 		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+		p.log.Printf("%s: %s: %s", "post.QueryByCat",
 			database.Log(qPost),
 		)
 
@@ -426,7 +418,7 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 		WHERE 
 			post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.QueryByCat",
+		p.log.Printf("%s: %s: %s", "post.QueryByCat",
 			database.Log(qComments),
 		)
 
@@ -448,7 +440,7 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 				ID:          comment.ID,
 			})
 		}
-		p.log.Printf("%s: %s: %s with %v", traceID, "post.QueryByCat",
+		p.log.Printf("%s: %s: %s with %v", "post.QueryByCat",
 			database.Log(qComments), comments,
 		)
 
@@ -487,8 +479,7 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 }
 
 // QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from PostDB
-func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]Info, error) {
-
+func (p Post) QueryByUser(ctx context.Context, user string) ([]Info, error) {
 	// Get author
 	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
 
@@ -500,7 +491,7 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 	// Get all posts
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+	p.log.Printf("%s: %s: %s", "post.QueryByUser",
 		database.Log(qPost),
 	)
 
@@ -516,7 +507,7 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 		// Get posts votes
 		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+		p.log.Printf("%s: %s: %s", "post.QueryByUser",
 			database.Log(qPost),
 		)
 
@@ -534,7 +525,7 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 		WHERE
 			post_id = $1`
 
-		p.log.Printf("%s: %s: %s", traceID, "post.QueryByUser",
+		p.log.Printf("%s: %s: %s", "post.QueryByUser",
 			database.Log(qComments),
 		)
 
@@ -556,7 +547,7 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 				ID:          comment.ID,
 			})
 		}
-		p.log.Printf("%s: %s: %s with %v", traceID, "post.QueryByUser",
+		p.log.Printf("%s: %s: %s with %v", "post.QueryByUser",
 			database.Log(qComments), comments,
 		)
 
@@ -595,17 +586,13 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 }
 
 // Vote adds vote to the post with given postID.
-func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int) (Info, error) {
+func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote int) (Info, error) {
 
-	claims, ok := ctx.Value(auth.Key).(auth.Claims)
-	if !ok {
-		return nil, errors.New("claims missing from context")
-	}
 	// todo: update post score
 	// todo: maybe replace qCheckExist by QueryByID with ErrNotFound check
 	const qCheckExist = `SELECT COUNT(1) FROM posts WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+	p.log.Printf("%s: %s: %s", "post.Vote",
 		database.Log(qCheckExist),
 	)
 
@@ -620,7 +607,7 @@ func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int)
 
 	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+	p.log.Printf("%s: %s: %s", "post.Vote",
 		database.Log(qDeleteVote),
 	)
 
@@ -634,7 +621,7 @@ func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int)
 		VALUES
 			($1, $2, $3)`
 
-	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+	p.log.Printf("%s: %s: %s", "post.Vote",
 		database.Log(qPutVote),
 	)
 
@@ -642,7 +629,7 @@ func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int)
 		return nil, errors.Wrap(err, "putting vote")
 	}
 
-	pst, err := p.QueryByID(ctx, traceID, postID)
+	pst, err := p.QueryByID(ctx, postID)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting post after voting")
 	}

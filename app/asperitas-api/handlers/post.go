@@ -6,7 +6,6 @@ import (
 	"github.com/cravtos/asperitas-backend/business/data/post"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
@@ -15,15 +14,7 @@ type postGroup struct {
 }
 
 func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.query")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
-	posts, err := pg.post.Query(ctx, v.TraceID)
+	posts, err := pg.post.Query(ctx)
 	if err != nil {
 		return err
 	}
@@ -32,16 +23,8 @@ func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, r *http.Re
 }
 
 func (pg postGroup) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.queryByID")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
 	params := web.Params(r)
-	pst, err := pg.post.QueryByID(ctx, v.TraceID, params["post_id"]) // Todo: add func, returning Info instead of PostDB
+	pst, err := pg.post.QueryByID(ctx, params["post_id"]) // Todo: add func, returning Info instead of PostDB
 	if err != nil {
 		switch err {
 		case post.ErrInvalidID:
@@ -57,37 +40,6 @@ func (pg postGroup) queryByID(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.create")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
-	claims, ok := ctx.Value(auth.Key).(auth.Claims)
-	if !ok {
-		return web.NewShutdownError("claims missing from context")
-	}
-
-	// Todo: look at how Decode works if not all fields provided
-	var np post.NewPost
-	if err := web.Decode(r, &np); err != nil {
-		return errors.Wrapf(err, "unable to decode payload")
-	}
-
-	pst, err := pg.post.Create(ctx, v.TraceID, claims, np, v.Now)
-	if err != nil {
-		return errors.Wrapf(err, "creating new post: %+v", np)
-	}
-
-	return web.Respond(ctx, w, pst, http.StatusCreated)
-}
-
-func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.delete")
-	defer span.End()
-
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return web.NewShutdownError("web value missing from context")
@@ -98,10 +50,28 @@ func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errors.New("claims missing from context")
 	}
 
-	// Todo: maybe claims shouldn't be passed but retrieved from ctx in post.Delete
+	// Todo: look at how Decode works if not all fields provided
+	var np post.NewPost
+	if err := web.Decode(r, &np); err != nil {
+		return errors.Wrapf(err, "unable to decode payload")
+	}
+
+	pst, err := pg.post.Create(ctx, claims, np, v.Now)
+	if err != nil {
+		return errors.Wrapf(err, "creating new post: %+v", np)
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusCreated)
+}
+
+func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return errors.New("claims missing from context")
+	}
 
 	params := web.Params(r)
-	if err := pg.post.Delete(ctx, v.TraceID, claims, params["post_id"]); err != nil {
+	if err := pg.post.Delete(ctx, claims, params["post_id"]); err != nil {
 		switch err {
 		case post.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
@@ -114,16 +84,8 @@ func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (pg postGroup) queryByCat(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.queryByCat")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
 	params := web.Params(r)
-	pst, err := pg.post.QueryByCat(ctx, v.TraceID, params["category"])
+	pst, err := pg.post.QueryByCat(ctx, params["category"])
 	if err != nil {
 		switch err {
 		case post.ErrNotFound:
@@ -137,16 +99,8 @@ func (pg postGroup) queryByCat(ctx context.Context, w http.ResponseWriter, r *ht
 }
 
 func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.queryByUser")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
-	if !ok {
-		return web.NewShutdownError("web value missing from context")
-	}
-
 	params := web.Params(r)
-	pst, err := pg.post.QueryByUser(ctx, v.TraceID, params["user"])
+	pst, err := pg.post.QueryByUser(ctx, params["user"])
 	if err != nil {
 		switch err {
 		case post.ErrInvalidID:
@@ -163,16 +117,13 @@ func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *h
 
 
 func (pg postGroup) upvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.upvote")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
 	if !ok {
-		return web.NewShutdownError("web value missing from context")
+		return errors.New("claims missing from context")
 	}
 
 	params := web.Params(r)
-	pst, err := pg.post.Vote(ctx, v.TraceID, params["post_id"], 1)
+	pst, err := pg.post.Vote(ctx, claims, params["post_id"], 1)
 	if err != nil {
 		switch err {
 		case post.ErrNotFound:
@@ -186,16 +137,13 @@ func (pg postGroup) upvote(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (pg postGroup) downvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.downvote")
-	defer span.End()
-
-	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
 	if !ok {
-		return web.NewShutdownError("web value missing from context")
+		return errors.New("claims missing from context")
 	}
 
 	params := web.Params(r)
-	pst, err := pg.post.Vote(ctx, v.TraceID, params["post_id"], -1)
+	pst, err := pg.post.Vote(ctx, claims, params["post_id"], -1)
 	if err != nil {
 		return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
 	}
