@@ -50,42 +50,19 @@ func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now ti
 		DateCreated: now,
 		UserID:      claims.User.ID,
 	}
-
 	if post.Type == "url" {
 		post.Payload = np.URL
 	}
 
-	const qPost = `
-	INSERT INTO posts
-		(post_id, score, views, type, title, category, payload, date_created, user_id)
-	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-
-	p.log.Printf("%s: %s: %s", "post.Create",
-		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.Payload, post.Category,
-			post.DateCreated, post.UserID),
-	)
-
-	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Score, post.Views, post.Type, post.Title,
-		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
-		return InfoText{}, errors.Wrap(err, "creating post")
+	if err := p.insertPost(ctx, post); err != nil {
+		return InfoText{}, err
 	}
 
-	const qVote = `
-	INSERT INTO votes
-		(post_id, user_id, vote)
-	VALUES
-		($1, $2, $3)`
-
-	p.log.Printf("%s: %s: %s", "post.Create",
-		database.Log(qVote, post.ID, post.UserID, 1),
-	)
-
-	if _, err := p.db.ExecContext(ctx, qVote, post.ID, post.UserID, 1); err != nil {
-		return InfoText{}, errors.Wrap(err, "upvote created post")
+	if err := p.insertVote(ctx, post.ID, post.UserID, 1); err != nil {
+		return InfoText{}, err
 	}
 
-	info := toInfo(post, claims)
+	info := infoByPostAndClaims(post, claims)
 	return info, nil
 }
 
@@ -96,10 +73,10 @@ func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) err
 		return ErrInvalidID
 	}
 
-	const qPost = `SELECT user_id FROM posts WHERE post_id = $1`
+	const qSelectAuthor = `SELECT user_id FROM posts WHERE post_id = $1`
 
 	var author Author
-	if err := p.db.GetContext(ctx, &author, qPost, postID); err != nil {
+	if err := p.db.GetContext(ctx, &author, qSelectAuthor, postID); err != nil {
 		return errors.Wrap(err, "selecting post by ID")
 	}
 
@@ -107,150 +84,59 @@ func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) err
 		return ErrForbidden
 	}
 
-	const q = `
-	DELETE FROM
-		posts
-	WHERE
-		post_id = $1`
+	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Delete",
-		database.Log(q, postID),
-	)
+	p.log.Printf("%s: %s: %s", "post.Delete", database.Log(qDeletePost, postID))
 
-	if _, err := p.db.ExecContext(ctx, q, postID); err != nil {
+	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
 		return errors.Wrapf(err, "deleting post %s", postID)
 	}
 
 	return nil
 }
 
-// Query gets all Posts from the database.
+// Query gets all Posts from the database ready to be send to user.
 func (p Post) Query(ctx context.Context) ([]Info, error) {
 
-	// Get all posts
-	const qPost = `SELECT * FROM posts`
-
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qPost),
-	)
-
-	var posts []PostDB
-	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+	posts, err := p.selectAllPosts(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var info []Info
 	for _, post := range posts {
-		// todo: divide into functions
-		const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
-
-		var author Author
-		if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
-			return nil, errors.Wrap(err, "selecting authors")
+		author, err := p.getAuthorByID(ctx, post.UserID)
+		if err != nil {
+			return nil, err
 		}
 
-		// Get posts votes
-		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
-
-		p.log.Printf("%s: %s: %s", "post.Query",
-			database.Log(qVotes),
-		)
-
-		var votes []Vote
-		if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
-			return nil, errors.Wrap(err, "selecting votes")
+		votes, err := p.selectVotesByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
 		}
 
-		// Get their comments
-		const qComments = `
-		SELECT 
-			name, user_id, cm.date_created, body, comment_id 
-		FROM 
-			comments cm join users using(user_id) 
-		WHERE 
-			post_id = $1`
-
-		p.log.Printf("%s: %s: %s", "post.Query",
-			database.Log(qComments),
-		)
-
-		var rawComments []CommentWithAuthor
-		if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
-			return nil, errors.Wrap(err, "selecting comments")
+		comments, err := p.selectCommentsByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
 		}
 
-		comments := make([]Comment, 0)
-		for _, comment := range rawComments {
-			author := Author{
-				Username: comment.AuthorName,
-				ID:       comment.AuthorID,
-			}
-			comments = append(comments, Comment{
-				DateCreated: comment.DateCreated,
-				Author:      author,
-				Body:        comment.Body,
-				ID:          comment.ID,
-			})
-		}
-		p.log.Printf("%s: %s: %s with %v", "post.Query",
-			database.Log(qComments), comments,
-		)
-
-		if post.Type == "url" {
-			info = append(info, InfoLink{
-				ID:               post.ID,
-				Score:            post.Score,
-				Views:            post.Views,
-				Title:            post.Title,
-				Payload:          post.Payload,
-				Category:         post.Category,
-				DateCreated:      post.DateCreated,
-				Author:           author,
-				Votes:            votes,
-				Comments:         comments,
-				UpvotePercentage: upvotePercentage(votes),
-			})
-			continue
-		}
-		info = append(info, InfoText{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           author,
-			Votes:            votes,
-			Comments:         comments,
-			UpvotePercentage: upvotePercentage(votes),
-		})
+		info = append(info, infoByDBdata(post, author, votes, comments))
 	}
 
 	return info, nil
 }
 
-// QueryByID finds the post identified by a given ID.
+// QueryByID finds the post identified by a given ID ready to be send to user.
 func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
-
 	if _, err := uuid.Parse(postID); err != nil {
 		return InfoText{}, ErrInvalidID
 	}
 
-	const q = `
-	SELECT * FROM
-		posts
-	WHERE
-		post_id = $1`
-
-	p.log.Printf("%s: %s: %s", "product.QueryByID",
-		database.Log(q, postID),
-	)
-
-	var post PostDB
-	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
-		return nil, errors.Wrap(err, "selecting post by ID")
+	post, err := p.getPostByID(ctx, postID)
+	if err != nil {
+		return nil, err
 	}
+
 	// todo: should also return ErrNotFound when needed
 
 	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
@@ -329,7 +215,7 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 	}, nil
 }
 
-// QueryByCat finds the post identified by a given Category.
+// QueryByCat finds the post identified by a given Category ready to be send to user.
 func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
 
 	// Get all posts
