@@ -158,7 +158,7 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 
 // QueryByCat finds the post identified by a given Category ready to be send to user.
 func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
-	posts, err := p.selectCategory(ctx, category)
+	posts, err := p.selectPostsByCategory(ctx, category)
 	if err != nil {
 		return nil, err
 	}
@@ -186,108 +186,31 @@ func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
 	return info, nil
 }
 
-// QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from PostDB
-func (p Post) QueryByUser(ctx context.Context, user string) ([]Info, error) {
-	// Get author
-	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
-
-	var author Author
-	if err := p.db.GetContext(ctx, &author, qAuthor, user); err != nil {
-		return nil, errors.Wrap(err, "selecting author")
+// QueryByUser finds the posts identified by a given user ID.
+func (p Post) QueryByUser(ctx context.Context, userID string) ([]Info, error) {
+	author, err := p.getAuthorByID(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Get all posts
-	const qPost = `SELECT * FROM posts WHERE user_id = $1`
-
-	p.log.Printf("%s: %s: %s", "post.QueryByUser",
-		database.Log(qPost),
-	)
-
-	var posts []PostDB
-	if err := p.db.SelectContext(ctx, &posts, qPost, author.ID); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+	posts, err := p.selectPostsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
 	}
 
 	var info []Info
 	for _, post := range posts {
-		// todo: divide into functions
-
-		// Get posts votes
-		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
-
-		p.log.Printf("%s: %s: %s", "post.QueryByUser",
-			database.Log(qPost),
-		)
-
-		var votes []Vote
-		if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
-			return nil, errors.Wrap(err, "selecting votes")
+		votes, err := p.selectVotesByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
 		}
 
-		// Get their comments
-		const qComments = `
-		SELECT
-			name, user_id, cm.date_created, body, comment_id
-		FROM
-			comments cm join users using(user_id)
-		WHERE
-			post_id = $1`
-
-		p.log.Printf("%s: %s: %s", "post.QueryByUser",
-			database.Log(qComments),
-		)
-
-		var rawComments []CommentWithAuthor
-		if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
-			return nil, errors.Wrap(err, "selecting comments")
+		comments, err := p.selectCommentsByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
 		}
 
-		comments := make([]Comment, 0)
-		for _, comment := range rawComments {
-			author := Author{
-				Username: comment.AuthorName,
-				ID:       comment.AuthorID,
-			}
-			comments = append(comments, Comment{
-				DateCreated: comment.DateCreated,
-				Author:      author,
-				Body:        comment.Body,
-				ID:          comment.ID,
-			})
-		}
-		p.log.Printf("%s: %s: %s with %v", "post.QueryByUser",
-			database.Log(qComments), comments,
-		)
-
-		if post.Type == "url" {
-			info = append(info, InfoLink{
-				ID:               post.ID,
-				Score:            post.Score,
-				Views:            post.Views,
-				Title:            post.Title,
-				Payload:          post.Payload,
-				Category:         post.Category,
-				DateCreated:      post.DateCreated,
-				Author:           author,
-				Votes:            votes,
-				Comments:         comments,
-				UpvotePercentage: upvotePercentage(votes),
-			})
-			continue
-		}
-		info = append(info, InfoText{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           author,
-			Votes:            votes,
-			Comments:         comments,
-			UpvotePercentage: upvotePercentage(votes),
-		})
+		info = append(info, infoByDBdata(post, author, votes, comments))
 	}
 
 	return info, nil

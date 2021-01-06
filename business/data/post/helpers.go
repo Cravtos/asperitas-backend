@@ -180,8 +180,8 @@ func (p Post) selectAllPosts(ctx context.Context) ([]PostDB, error) {
 	return posts, nil
 }
 
-//selectCategory returns all posts with a given category stored in DB
-func (p Post) selectCategory(ctx context.Context, category string) ([]PostDB, error) {
+//selectPostsByCategory returns all posts with a given category stored in DB
+func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
 	p.log.Printf("%s: %s: %s", "post.QueryByCat",
@@ -190,6 +190,21 @@ func (p Post) selectCategory(ctx context.Context, category string) ([]PostDB, er
 
 	var posts []PostDB
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
+		return nil, errors.Wrap(err, "selecting posts")
+	}
+	return posts, nil
+}
+
+//selectPostsByUser returns all posts from user stored in DB
+func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]PostDB, error) {
+	const qPost = `SELECT * FROM posts WHERE user_id = $1`
+
+	p.log.Printf("%s: %s: %s", "post.QueryByUser",
+		database.Log(qPost),
+	)
+
+	var posts []PostDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting posts")
 	}
 	return posts, nil
