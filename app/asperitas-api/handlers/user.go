@@ -15,7 +15,7 @@ type userGroup struct {
 }
 
 func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	v, ok := ctx.Value(web.KeyValues).(web.Values)
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return errors.New("web values missing from context")
 	}
@@ -53,7 +53,7 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	v, ok := ctx.Value(web.KeyValues).(web.Values)
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return errors.New("web values missing from context")
 	}
