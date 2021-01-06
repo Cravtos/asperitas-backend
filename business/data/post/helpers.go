@@ -218,9 +218,7 @@ func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
 	WHERE
 		post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "product.QueryByID",
-		database.Log(q, postID),
-	)
+	p.log.Printf("%s: %s", "product.getPostByID", database.Log(q, postID))
 
 	var post PostDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
@@ -230,6 +228,24 @@ func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
 		return PostDB{}, errors.Wrap(err, "selecting post by ID")
 	}
 	return post, nil
+}
+
+//checkPost shows whether post with given ID exist in DB or not
+//it returns an error if post does not exist or nil if does
+func (p Post) checkPost(ctx context.Context, postID string) error {
+	const qCheckExist = `SELECT COUNT(*) FROM posts WHERE post_id = $1`
+
+	p.log.Printf("%s: %s", "post.checkPost", database.Log(qCheckExist))
+
+	var exist []int
+	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID); err != nil {
+		return errors.Wrap(err, "checking if post exists")
+	}
+
+	if exist[0] == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 //insertPost adds one new row to posts DB
@@ -278,6 +294,35 @@ func (p Post) deletePost(ctx context.Context, postID string) error {
 
 	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
 		return errors.Wrapf(err, "deleting post %s", postID)
+	}
+	return nil
+}
+
+//checkVote shows whether vote to given post by user exist in DB or not
+//it returns an error if vote does not exist or nil if does
+func (p Post) checkVote(ctx context.Context, postID string, userID string) error {
+	const qCheckExist = `SELECT COUNT(*) FROM votes WHERE post_id = $1 AND user_id = $2`
+
+	p.log.Printf("%s: %s", "post.checkVote", database.Log(qCheckExist))
+
+	var exist []int
+	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID, userID); err != nil {
+		return errors.Wrap(err, "checking if vote exists")
+	}
+
+	if exist[0] == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (p Post) updateVote(ctx context.Context, postID string, userID string, vote int) error {
+	const qUpdateVote = `UPDATE votes SET vote = $3 WHERE post_id = $1 AND user_id = $2`
+
+	p.log.Printf("%s: %s", "post.Vote", database.Log(qUpdateVote))
+
+	if _, err := p.db.ExecContext(ctx, qUpdateVote, postID, userID, vote); err != nil {
+		return errors.Wrap(err, "updating vote")
 	}
 	return nil
 }

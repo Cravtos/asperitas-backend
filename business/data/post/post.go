@@ -208,46 +208,29 @@ func (p Post) QueryByUser(ctx context.Context, userID string) ([]Info, error) {
 
 // Vote adds vote to the post with given postID.
 func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote int) (Info, error) {
-
-	// todo: update post score
-	// todo: maybe replace qCheckExist by QueryByID with ErrNotFound check
-	const qCheckExist = `SELECT COUNT(1) FROM posts WHERE post_id = $1`
-
-	p.log.Printf("%s: %s: %s", "post.Vote",
-		database.Log(qCheckExist),
-	)
-
-	var exist []int
-	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID); err != nil {
-		return nil, errors.Wrap(err, "checking if post exists")
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
 	}
 
-	if exist[0] == 0 {
-		return nil, ErrNotFound
+	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
+		if err != ErrNotFound {
+			return nil, err
+		}
+		if err := p.insertVote(ctx, postID, claims.User.ID, vote); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := p.updateVote(ctx, postID, claims.User.ID, vote); err != nil {
+			return nil, err
+		}
 	}
 
-	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
+	const qUpdatePost = `UPDATE posts SET score = score+$2 WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Vote",
-		database.Log(qDeleteVote),
-	)
+	p.log.Printf("%s: %s", "post.Vote", database.Log(qUpdatePost))
 
-	if _, err := p.db.ExecContext(ctx, qDeleteVote, postID, claims.User.ID); err != nil {
-		return nil, errors.Wrap(err, "deleting votes")
-	}
-
-	const qPutVote = `
-		INSERT INTO votes
-			(post_id, user_id, vote)
-		VALUES
-			($1, $2, $3)`
-
-	p.log.Printf("%s: %s: %s", "post.Vote",
-		database.Log(qPutVote),
-	)
-
-	if _, err := p.db.ExecContext(ctx, qPutVote, postID, claims.User.ID, vote); err != nil {
-		return nil, errors.Wrap(err, "putting vote")
+	if _, err := p.db.ExecContext(ctx, qUpdatePost, postID, vote); err != nil {
+		return nil, errors.Wrap(err, "updating vote")
 	}
 
 	pst, err := p.QueryByID(ctx, postID)
