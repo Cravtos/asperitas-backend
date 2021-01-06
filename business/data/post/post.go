@@ -19,6 +19,8 @@ var (
 	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 
+	//todo ErrNotFound should exist not only for posts (but maybe it should be more serious problem than with Post)
+
 	// ErrNotFound is used when a specific Post is requested but does not exist.
 	ErrNotFound = errors.New("post not found")
 )
@@ -137,82 +139,22 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 		return nil, err
 	}
 
-	// todo: should also return ErrNotFound when needed
-
-	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
-
-	var author Author
-	if err := p.db.GetContext(ctx, &author, qAuthor, post.UserID); err != nil {
-		return nil, errors.Wrap(err, "selecting author")
-	}
-	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
-
-	var votes []Vote
-	if err := p.db.SelectContext(ctx, &votes, qVotes, post.ID); err != nil {
-		return nil, errors.Wrap(err, "selecting votes")
+	author, err := p.getAuthorByID(ctx, post.UserID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Get their comments
-	const qComments = `
-	SELECT 
-		name, user_id, cm.date_created, body, comment_id 
-	FROM 
-		comments cm join users using(user_id) 
-	WHERE 
-		post_id = $1`
-
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qComments),
-	)
-
-	var rawComments []CommentWithAuthor
-	if err := p.db.SelectContext(ctx, &rawComments, qComments, post.ID); err != nil {
-		return nil, errors.Wrap(err, "selecting comments")
+	votes, err := p.selectVotesByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	comments := make([]Comment, 0)
-	for _, comment := range rawComments {
-		author := Author{
-			Username: comment.AuthorName,
-			ID:       comment.AuthorID,
-		}
-		comments = append(comments, Comment{
-			DateCreated: comment.DateCreated,
-			Author:      author,
-			Body:        comment.Body,
-			ID:          comment.ID,
-		})
+	comments, err := p.selectCommentsByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	if post.Type == "url" {
-		return InfoLink{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           author,
-			Votes:            votes,
-			Comments:         comments,
-			UpvotePercentage: upvotePercentage(votes),
-		}, nil
-	}
-
-	return InfoText{
-		ID:               post.ID,
-		Score:            post.Score,
-		Views:            post.Views,
-		Title:            post.Title,
-		Payload:          post.Payload,
-		Category:         post.Category,
-		DateCreated:      post.DateCreated,
-		Author:           author,
-		Votes:            votes,
-		Comments:         comments,
-		UpvotePercentage: upvotePercentage(votes),
-	}, nil
+	return infoByDBdata(post, author, votes, comments), nil
 }
 
 // QueryByCat finds the post identified by a given Category ready to be send to user.
