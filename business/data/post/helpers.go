@@ -180,6 +180,21 @@ func (p Post) selectAllPosts(ctx context.Context) ([]PostDB, error) {
 	return posts, nil
 }
 
+//selectCategory returns all posts with a given category stored in DB
+func (p Post) selectCategory(ctx context.Context, category string) ([]PostDB, error) {
+	const qPost = `SELECT * FROM posts WHERE category = $1`
+
+	p.log.Printf("%s: %s: %s", "post.QueryByCat",
+		database.Log(qPost),
+	)
+
+	var posts []PostDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
+		return nil, errors.Wrap(err, "selecting posts")
+	}
+	return posts, nil
+}
+
 //getPostByID obtains post from DB using its ID
 func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
 	const q = `
