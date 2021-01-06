@@ -8,7 +8,6 @@ import (
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Authenticate validates a JWT from the `Authorization` header.
@@ -19,8 +18,6 @@ func Authenticate(a *auth.Auth) web.Middleware {
 
 		// Create the handler that will be attached in the middleware chain.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.mid.authenticate")
-			defer span.End()
 
 			// Expecting: bearer <token>
 			authStr := r.Header.Get("authorization")

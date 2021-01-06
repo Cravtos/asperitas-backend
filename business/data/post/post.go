@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -42,8 +41,6 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.create")
-	defer span.End()
 
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
@@ -144,8 +141,6 @@ func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np
 
 // Delete removes the product identified by a given ID.
 func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, postID string) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.delete")
-	defer span.End()
 
 	if _, err := uuid.Parse(postID); err != nil {
 		return ErrInvalidID
@@ -181,8 +176,6 @@ func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, po
 
 // Query gets all Posts from the database.
 func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.query")
-	defer span.End()
 
 	// Get all posts
 	const qPost = `SELECT * FROM posts`
@@ -210,7 +203,7 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 		const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
 		p.log.Printf("%s: %s: %s", traceID, "post.Query",
-			database.Log(qPost),
+			database.Log(qVotes),
 		)
 
 		var votes []Vote
@@ -289,8 +282,6 @@ func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
 
 // QueryByID finds the post identified by a given ID.
 func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyid")
-	defer span.End()
 
 	if _, err := uuid.Parse(postID); err != nil {
 		return InfoText{}, ErrInvalidID
@@ -391,8 +382,6 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 
 // QueryByCat finds the post identified by a given Category.
 func (p Post) QueryByCat(ctx context.Context, traceID string, category string) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybycat")
-	defer span.End()
 
 	// Get all posts
 	const qPost = `SELECT * FROM posts WHERE category = $1`
@@ -499,8 +488,6 @@ func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (
 
 // QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from PostDB
 func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyuser")
-	defer span.End()
 
 	// Get author
 	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
@@ -609,8 +596,6 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 
 // Vote adds vote to the post with given postID.
 func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.vote")
-	defer span.End()
 
 	claims, ok := ctx.Value(auth.Key).(auth.Claims)
 	if !ok {

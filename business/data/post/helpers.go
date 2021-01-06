@@ -11,3 +11,5 @@ func UpvotePercentage(votes []Vote) int {
 
 	return int(positive / float32(len(votes)) * 100)
 }
+
+// todo: function to make InfoLink or InfoText from all fields and payload

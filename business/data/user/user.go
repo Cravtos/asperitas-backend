@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -48,8 +47,6 @@ func New(log *log.Logger, db *sqlx.DB) User {
 
 // Create inserts a new user into the database.
 func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.Time) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "internal.data.user.create")
-	defer span.End()
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -82,8 +79,6 @@ func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.T
 
 // Delete removes a user from the database.
 func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, userID string) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.delete")
-	defer span.End()
 
 	if _, err := uuid.Parse(userID); err != nil {
 		return ErrInvalidID
@@ -113,8 +108,6 @@ func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, us
 
 // Query retrieves a list of existing users from the database.
 func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.query")
-	defer span.End()
 
 	const q = `
 	SELECT
@@ -141,8 +134,6 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 
 // QueryByID gets the specified user from the database.
 func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims, userID string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.querybyid")
-	defer span.End()
 
 	if _, err := uuid.Parse(userID); err != nil {
 		return Info{}, ErrInvalidID
@@ -178,8 +169,6 @@ func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims,
 
 // QueryByName gets the specified user from the database by username.
 func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claims, name string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.querybyname")
-	defer span.End()
 
 	const q = `
 	SELECT
@@ -213,8 +202,6 @@ func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claim
 // success it returns a Claims Info representing this user. The claims can be
 // used to generate a token for future authentication.
 func (u User) Authenticate(ctx context.Context, traceID string, now time.Time, name, password string) (auth.Claims, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.authenticate")
-	defer span.End()
 
 	const q = `
 	SELECT

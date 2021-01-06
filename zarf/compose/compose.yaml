@@ -6,14 +6,6 @@ networks:
 
 services:
 
-  zipkin:
-    container_name: zipkin
-    networks:
-      - shared-network
-    image: openzipkin/zipkin:2.23
-    ports:
-      - 9411:9411
-
   db:
     container_name: asperitas_db
     environment:
@@ -33,16 +25,4 @@ services:
       - 3000:3000 # CRUD API
       - 4000:4000 # DEBUG API
     depends_on:
-      - zipkin
       - db
-
-  metrics:
-    container_name: metrics
-    networks:
-      - shared-network
-    image: metrics-amd64:1.0
-    ports:
-      - 3001:3001 # EXPVAR API
-      - 4001:4001 # DEBUG API
-    depends_on:
-      - asperitas-api
