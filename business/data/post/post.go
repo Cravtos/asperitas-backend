@@ -39,16 +39,16 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-	post := PostDB {
-		ID: uuid.New().String(),
-		Score: 0,
-		Views: 0,
-		Title: np.Title,
-		Type: np.Type,
-		Category: np.Category,
-		Payload: np.Text,
+	post := PostDB{
+		ID:          uuid.New().String(),
+		Score:       0,
+		Views:       0,
+		Title:       np.Title,
+		Type:        np.Type,
+		Category:    np.Category,
+		Payload:     np.Text,
 		DateCreated: now,
-		UserID: claims.User.ID,
+		UserID:      claims.User.ID,
 	}
 
 	if post.Type == "url" {
@@ -85,49 +85,7 @@ func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now ti
 		return InfoText{}, errors.Wrap(err, "upvote created post")
 	}
 
-	// todo: make a helper function to get Info from PostDB to reduce code
-	if post.Type == "url" {
-		info := InfoLink{
-			ID:               post.ID,
-			Score:            post.Score,
-			Views:            post.Views,
-			Title:            post.Title,
-			Payload:          post.Payload,
-			Category:         post.Category,
-			DateCreated:      post.DateCreated,
-			Author:           Author{
-				Username: claims.User.Username,
-				ID: claims.User.ID,
-			},
-			Votes:            []Vote{
-				{User: claims.User.ID, Vote: 1},
-			},
-			Comments:         []Comment{},
-			UpvotePercentage: 100,
-		}
-
-		return info, nil
-	}
-
-	info := InfoText{
-		ID:               post.ID,
-		Score:            post.Score,
-		Views:            post.Views,
-		Title:            post.Title,
-		Payload:          post.Payload,
-		Category:         post.Category,
-		DateCreated:      post.DateCreated,
-		Author:           Author{
-			Username: claims.User.Username,
-			ID: claims.User.ID,
-		},
-		Votes:            []Vote{
-			{User: claims.User.ID, Vote: 1},
-		},
-		Comments:         []Comment{},
-		UpvotePercentage: 100,
-	}
-
+	info := toInfo(post, claims)
 	return info, nil
 }
 
@@ -250,7 +208,7 @@ func (p Post) Query(ctx context.Context) ([]Info, error) {
 				Author:           author,
 				Votes:            votes,
 				Comments:         comments,
-				UpvotePercentage: UpvotePercentage(votes),
+				UpvotePercentage: upvotePercentage(votes),
 			})
 			continue
 		}
@@ -265,7 +223,7 @@ func (p Post) Query(ctx context.Context) ([]Info, error) {
 			Author:           author,
 			Votes:            votes,
 			Comments:         comments,
-			UpvotePercentage: UpvotePercentage(votes),
+			UpvotePercentage: upvotePercentage(votes),
 		})
 	}
 
@@ -352,7 +310,7 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 			Author:           author,
 			Votes:            votes,
 			Comments:         comments,
-			UpvotePercentage: UpvotePercentage(votes),
+			UpvotePercentage: upvotePercentage(votes),
 		}, nil
 	}
 
@@ -367,13 +325,12 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 		Author:           author,
 		Votes:            votes,
 		Comments:         comments,
-		UpvotePercentage: UpvotePercentage(votes),
+		UpvotePercentage: upvotePercentage(votes),
 	}, nil
 }
 
-
 // QueryByCat finds the post identified by a given Category.
-func (p Post) QueryByCat(ctx context.Context,category string) ([]Info, error) {
+func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
 
 	// Get all posts
 	const qPost = `SELECT * FROM posts WHERE category = $1`
@@ -456,7 +413,7 @@ func (p Post) QueryByCat(ctx context.Context,category string) ([]Info, error) {
 				Author:           author,
 				Votes:            votes,
 				Comments:         comments,
-				UpvotePercentage: UpvotePercentage(votes),
+				UpvotePercentage: upvotePercentage(votes),
 			})
 			continue
 		}
@@ -471,7 +428,7 @@ func (p Post) QueryByCat(ctx context.Context,category string) ([]Info, error) {
 			Author:           author,
 			Votes:            votes,
 			Comments:         comments,
-			UpvotePercentage: UpvotePercentage(votes),
+			UpvotePercentage: upvotePercentage(votes),
 		})
 	}
 
@@ -563,7 +520,7 @@ func (p Post) QueryByUser(ctx context.Context, user string) ([]Info, error) {
 				Author:           author,
 				Votes:            votes,
 				Comments:         comments,
-				UpvotePercentage: UpvotePercentage(votes),
+				UpvotePercentage: upvotePercentage(votes),
 			})
 			continue
 		}
@@ -578,7 +535,7 @@ func (p Post) QueryByUser(ctx context.Context, user string) ([]Info, error) {
 			Author:           author,
 			Votes:            votes,
 			Comments:         comments,
-			UpvotePercentage: UpvotePercentage(votes),
+			UpvotePercentage: upvotePercentage(votes),
 		})
 	}
 
