@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -47,10 +46,7 @@ func New(log *log.Logger, db *sqlx.DB) User {
 }
 
 // Create inserts a new user into the database.
-func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.Time) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "internal.data.user.create")
-	defer span.End()
-
+func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return Info{}, errors.Wrap(err, "generating password hash")
@@ -60,7 +56,7 @@ func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.T
 		ID:           uuid.New().String(),
 		Name:         nu.Name,
 		PasswordHash: hash,
-		DateCreated:  now.UTC(),
+		DateCreated:  now,
 	}
 
 	const q = `
@@ -69,7 +65,7 @@ func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.T
 	VALUES
 		($1, $2, $3, $4)`
 
-	u.log.Printf("%s: %s: %s", traceID, "user.Create",
+	u.log.Printf("%s: %s: %s", "user.Create",
 		database.Log(q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated),
 	)
 
@@ -81,9 +77,7 @@ func (u User) Create(ctx context.Context, traceID string, nu NewUser, now time.T
 }
 
 // Delete removes a user from the database.
-func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, userID string) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.delete")
-	defer span.End()
+func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) error {
 
 	if _, err := uuid.Parse(userID); err != nil {
 		return ErrInvalidID
@@ -100,7 +94,7 @@ func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, us
 	WHERE
 		user_id = $1`
 
-	u.log.Printf("%s: %s: %s", traceID, "user.Delete",
+	u.log.Printf("%s: %s: %s", "user.Delete",
 		database.Log(q, userID),
 	)
 
@@ -113,8 +107,6 @@ func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, us
 
 // Query retrieves a list of existing users from the database.
 func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.query")
-	defer span.End()
 
 	const q = `
 	SELECT
@@ -131,7 +123,7 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 		database.Log(q, offset, rowsPerPage),
 	)
 
-	users := []Info{}
+	var users []Info
 	if err := u.db.SelectContext(ctx, &users, q, offset, rowsPerPage); err != nil {
 		return nil, errors.Wrap(err, "selecting users")
 	}
@@ -140,9 +132,7 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 }
 
 // QueryByID gets the specified user from the database.
-func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims, userID string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.querybyid")
-	defer span.End()
+func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) (Info, error) {
 
 	if _, err := uuid.Parse(userID); err != nil {
 		return Info{}, ErrInvalidID
@@ -161,7 +151,7 @@ func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims,
 	WHERE 
 		user_id = $1`
 
-	u.log.Printf("%s: %s: %s", traceID, "user.QueryByID",
+	u.log.Printf("%s: %s: %s", "user.QueryByID",
 		database.Log(q, userID),
 	)
 
@@ -177,9 +167,7 @@ func (u User) QueryByID(ctx context.Context, traceID string, claims auth.Claims,
 }
 
 // QueryByName gets the specified user from the database by username.
-func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claims, name string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.querybyname")
-	defer span.End()
+func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) (Info, error) {
 
 	const q = `
 	SELECT
@@ -189,7 +177,7 @@ func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claim
 	WHERE
 		name = $1`
 
-	u.log.Printf("%s: %s: %s", traceID, "user.QueryByName",
+	u.log.Printf("%s: %s: %s", "user.QueryByName",
 		database.Log(q, name),
 	)
 
@@ -212,9 +200,7 @@ func (u User) QueryByName(ctx context.Context, traceID string, claims auth.Claim
 // Authenticate finds a user by their name and verifies their password. On
 // success it returns a Claims Info representing this user. The claims can be
 // used to generate a token for future authentication.
-func (u User) Authenticate(ctx context.Context, traceID string, now time.Time, name, password string) (auth.Claims, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.authenticate")
-	defer span.End()
+func (u User) Authenticate(ctx context.Context, name, password string, now time.Time) (auth.Claims, error) {
 
 	const q = `
 	SELECT
@@ -224,7 +210,7 @@ func (u User) Authenticate(ctx context.Context, traceID string, now time.Time, n
 	WHERE
 		name = $1`
 
-	u.log.Printf("%s: %s: %s", traceID, "user.Authenticate",
+	u.log.Printf("%s: %s: %s", "user.Authenticate",
 		database.Log(q, name),
 	)
 

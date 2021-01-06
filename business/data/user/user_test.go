@@ -27,14 +27,13 @@ func TestUser(t *testing.T) {
 		{
 			ctx := context.Background()
 			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
-			traceID := "00000000-0000-0000-0000-000000000000"
 
 			nu := user.NewUser{
 				Name:            "Bill Kennedy",
 				Password:        "gophers",
 			}
 
-			usr, err := u.Create(ctx, traceID, nu, now)
+			usr, err := u.Create(ctx, nu, now)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to create user : %s.", tests.Failed, testID, err)
 			}
@@ -51,7 +50,7 @@ func TestUser(t *testing.T) {
 				},
 			}
 
-			saved, err := u.QueryByID(ctx, traceID, claims, usr.ID)
+			saved, err := u.QueryByID(ctx, claims, usr.ID)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to retrieve user by ID: %s.", tests.Failed, testID, err)
 			}
@@ -62,18 +61,18 @@ func TestUser(t *testing.T) {
 			}
 			t.Logf("\t%s\tTest %d:\tShould get back the same user.", tests.Success, testID)
 
-			saved, err = u.QueryByName(ctx, traceID, claims, usr.Name)
+			saved, err = u.QueryByName(ctx, claims, usr.Name)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to retrieve user by Name : %s.", tests.Failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to retrieve user by Name.", tests.Success, testID)
 
-			if err := u.Delete(ctx, traceID, claims, usr.ID); err != nil {
+			if err := u.Delete(ctx, claims, usr.ID); err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to delete user : %s.", tests.Failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to delete user.", tests.Success, testID)
 
-			_, err = u.QueryByID(ctx, traceID, claims, usr.ID)
+			_, err = u.QueryByID(ctx, claims, usr.ID)
 			if errors.Cause(err) != user.ErrNotFound {
 				t.Fatalf("\t%s\tTest %d:\tShould NOT be able to retrieve user : %s.", tests.Failed, testID, err)
 			}
@@ -143,20 +142,19 @@ func TestAuthenticate(t *testing.T) {
 		{
 			ctx := context.Background()
 			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
-			traceID := "00000000-0000-0000-0000-000000000000"
 
 			nu := user.NewUser{
 				Name:            "Anna Walker",
 				Password:        "goroutines",
 			}
 
-			usr, err := u.Create(ctx, traceID, nu, now)
+			usr, err := u.Create(ctx, nu, now)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to create user : %s.", tests.Failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to create user.", tests.Success, testID)
 
-			claims, err := u.Authenticate(ctx, traceID, now, "Anna Walker", "goroutines")
+			claims, err := u.Authenticate(ctx,"Anna Walker", "goroutines", now)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to generate claims : %s.", tests.Failed, testID, err)
 			}

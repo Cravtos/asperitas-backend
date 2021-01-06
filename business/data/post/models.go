@@ -12,8 +12,8 @@ type Author struct {
 
 // Vote represents info about user vote.
 type Vote struct {
-	User string `json:"user"`
-	Vote int    `json:"vote"`
+	User string `db:"user_id" json:"user"`
+	Vote int    `db:"vote" json:"vote"`
 }
 
 // Comment represents info about comments for the post.
@@ -24,6 +24,9 @@ type Comment struct {
 	ID          string    `db:"comment_id" json:"id"`
 }
 
+// todo: find better name
+// CommentWithAuthor represents info for the comment.
+// It is used when getting comments info from database.
 type CommentWithAuthor struct {
 	DateCreated time.Time `db:"date_created"`
 	AuthorName  string    `db:"name"`
@@ -32,7 +35,6 @@ type CommentWithAuthor struct {
 	ID          string    `db:"comment_id"`
 }
 
-// todo: find more appropriate name
 // Comment represents info about comments in database.
 type CommentDB struct {
 	DateCreated time.Time `json:"created"`
@@ -41,7 +43,6 @@ type CommentDB struct {
 	ID          string    `json:"id"`
 }
 
-// todo: find more appropriate name not starting with "Post"
 // PostDB represents an individual post in database.
 type PostDB struct {
 	ID          string    `db:"post_id"`
@@ -75,8 +76,6 @@ type InfoText struct {
 	UpvotePercentage int       `json:"upvotePercentage"`
 }
 
-func (it InfoText) Info() {}
-
 // InfoLink represents an individual link post which is sent to user.
 type InfoLink struct {
 	ID               string    `json:"id"`
@@ -92,6 +91,8 @@ type InfoLink struct {
 	UpvotePercentage int       `json:"upvotePercentage"`
 }
 
+
+func (it InfoText) Info() {}
 func (il InfoLink) Info() {}
 
 // todo: validation on text or url
