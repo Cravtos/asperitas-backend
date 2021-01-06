@@ -12,7 +12,7 @@ type FieldError struct {
 
 // ErrorResponse is the form used for API responses from failures in the API.
 type ErrorResponse struct {
-	Error  string       `json:"error"`
+	Error  string       `json:"message"`
 	Fields []FieldError `json:"fields,omitempty"`
 }
 

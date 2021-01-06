@@ -98,7 +98,7 @@ func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errors.New("claims missing from context")
 	}
 
-	// Todo: check if claims allow to delete a post
+	// Todo: maybe claims shouldn't be passed but retrieved from ctx in post.Delete
 
 	params := web.Params(r)
 	if err := pg.post.Delete(ctx, v.TraceID, claims, params["post_id"]); err != nil {
@@ -156,6 +156,48 @@ func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *h
 		default:
 			return errors.Wrapf(err, "ID: %s", params["user"])
 		}
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusOK)
+}
+
+
+func (pg postGroup) upvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.upvote")
+	defer span.End()
+
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	params := web.Params(r)
+	pst, err := pg.post.Vote(ctx, v.TraceID, params["post_id"], 1)
+	if err != nil {
+		switch err {
+		case post.ErrNotFound:
+			return web.NewRequestError(post.ErrNotFound, http.StatusBadRequest)
+		default:
+			return errors.Wrapf(err, "upvoting post with ID: %s", params["post_id"])
+		}
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusOK)
+}
+
+func (pg postGroup) downvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.postGroup.downvote")
+	defer span.End()
+
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	params := web.Params(r)
+	pst, err := pg.post.Vote(ctx, v.TraceID, params["post_id"], -1)
+	if err != nil {
+		return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
 	}
 
 	return web.Respond(ctx, w, pst, http.StatusOK)

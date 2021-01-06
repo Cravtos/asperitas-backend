@@ -17,13 +17,13 @@ import (
 
 var (
 	// ErrInvalidID occurs when an ID is not in a valid form.
-	ErrInvalidID = errors.New("ID is not in its proper form")
+	ErrInvalidID = errors.New("invalid post id")
 
 	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 
 	// ErrNotFound is used when a specific Post is requested but does not exist.
-	ErrNotFound = errors.New("not found")
+	ErrNotFound = errors.New("post not found")
 )
 
 // Post manages the set of API's for product access.
@@ -308,8 +308,9 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 
 	var post PostDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
-		return InfoText{}, errors.Wrap(err, "selecting post by ID")
+		return nil, errors.Wrap(err, "selecting post by ID")
 	}
+	// todo: should also return ErrNotFound when needed
 
 	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
 
@@ -368,7 +369,7 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 			Author:           author,
 			Votes:            votes,
 			Comments:         comments,
-			UpvotePercentage: 100,
+			UpvotePercentage: UpvotePercentage(votes),
 		}, nil
 	}
 
@@ -383,7 +384,7 @@ func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Inf
 		Author:           author,
 		Votes:            votes,
 		Comments:         comments,
-		UpvotePercentage: 100,
+		UpvotePercentage: UpvotePercentage(votes),
 	}, nil
 }
 
@@ -604,4 +605,62 @@ func (p Post) QueryByUser(ctx context.Context, traceID string, user string) ([]I
 	}
 
 	return info, nil
+}
+
+// Vote adds vote to the post with given postID.
+func (p Post) Vote(ctx context.Context, traceID string, postID string, vote int) (Info, error) {
+	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.vote")
+	defer span.End()
+
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return nil, errors.New("claims missing from context")
+	}
+	// todo: update post score
+	// todo: maybe replace qCheckExist by QueryByID with ErrNotFound check
+	const qCheckExist = `SELECT COUNT(1) FROM posts WHERE post_id = $1`
+
+	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+		database.Log(qCheckExist),
+	)
+
+	var exist []int
+	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID); err != nil {
+		return nil, errors.Wrap(err, "checking if post exists")
+	}
+
+	if exist[0] == 0 {
+		return nil, ErrNotFound
+	}
+
+	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
+
+	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+		database.Log(qDeleteVote),
+	)
+
+	if _, err := p.db.ExecContext(ctx, qDeleteVote, postID, claims.User.ID); err != nil {
+		return nil, errors.Wrap(err, "deleting votes")
+	}
+
+	const qPutVote = `
+		INSERT INTO votes
+			(post_id, user_id, vote)
+		VALUES
+			($1, $2, $3)`
+
+	p.log.Printf("%s: %s: %s", traceID, "post.Vote",
+		database.Log(qPutVote),
+	)
+
+	if _, err := p.db.ExecContext(ctx, qPutVote, postID, claims.User.ID, vote); err != nil {
+		return nil, errors.Wrap(err, "putting vote")
+	}
+
+	pst, err := p.QueryByID(ctx, traceID, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
 }
