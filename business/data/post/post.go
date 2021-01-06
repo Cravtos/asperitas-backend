@@ -75,26 +75,16 @@ func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) err
 		return ErrInvalidID
 	}
 
-	const qSelectAuthor = `SELECT user_id FROM posts WHERE post_id = $1`
-
-	var author Author
-	if err := p.db.GetContext(ctx, &author, qSelectAuthor, postID); err != nil {
-		return errors.Wrap(err, "selecting post by ID")
+	post, err := p.getPostByID(ctx, postID)
+	if err != nil {
+		return err
 	}
 
-	if claims.User.ID == author.ID {
+	if claims.User.ID == post.UserID {
 		return ErrForbidden
 	}
 
-	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
-
-	p.log.Printf("%s: %s: %s", "post.Delete", database.Log(qDeletePost, postID))
-
-	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
-		return errors.Wrapf(err, "deleting post %s", postID)
-	}
-
-	return nil
+	return p.deletePost(ctx, postID)
 }
 
 // Query gets all Posts from the database ready to be send to user.

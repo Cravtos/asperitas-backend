@@ -270,4 +270,16 @@ func (p Post) insertVote(ctx context.Context, postID string, userID string, vote
 	return nil
 }
 
+func (p Post) deletePost(ctx context.Context, postID string) error {
+
+	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
+
+	p.log.Printf("%s: %s: %s", "post.Delete", database.Log(qDeletePost, postID))
+
+	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
+		return errors.Wrapf(err, "deleting post %s", postID)
+	}
+	return nil
+}
+
 // todo: function to make InfoLink or InfoText from all fields and payload
