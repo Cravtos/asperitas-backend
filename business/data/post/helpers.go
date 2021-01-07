@@ -6,6 +6,7 @@ import (
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
+	"time"
 )
 
 func upvotePercentage(votes []Vote) int {
@@ -20,8 +21,8 @@ func upvotePercentage(votes []Vote) int {
 	return int(positive / float32(len(votes)) * 100)
 }
 
-//creates new Info using PostDB and auth.Claims given by user
-func infoByPostAndClaims(post PostDB, claims auth.Claims) Info {
+//creates new Info using postDB and auth.Claims given by user
+func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 	var info Info
 	if post.Type == "url" {
 		info = InfoLink{
@@ -66,8 +67,7 @@ func infoByPostAndClaims(post PostDB, claims auth.Claims) Info {
 }
 
 //creates new Info using data got from DB
-func infoByDBdata(post PostDB, author Author, votes []Vote, comments []Comment) Info {
-
+func infoByDBdata(post postDB, author Author, votes []Vote, comments []Comment) Info {
 	var info Info
 	if post.Type == "url" {
 		info = InfoLink{
@@ -105,6 +105,8 @@ func infoByDBdata(post PostDB, author Author, votes []Vote, comments []Comment) 
 func (p Post) getAuthorByID(ctx context.Context, ID string) (Author, error) {
 	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
 
+	p.log.Printf("%s: %s", "post.helpers.getAuthorByID", database.Log(qAuthor))
+
 	var author Author
 	if err := p.db.GetContext(ctx, &author, qAuthor, ID); err != nil {
 		return Author{}, errors.Wrap(err, "selecting authors")
@@ -116,9 +118,7 @@ func (p Post) getAuthorByID(ctx context.Context, ID string) (Author, error) {
 func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error) {
 	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qVotes),
-	)
+	p.log.Printf("%s: %s", "post.helpers.selectVotesByPostID", database.Log(qVotes))
 
 	var votes []Vote
 	if err := p.db.SelectContext(ctx, &votes, qVotes, ID); err != nil {
@@ -131,15 +131,13 @@ func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error
 func (p Post) getPostScore(ctx context.Context, ID string) (int, error) {
 	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qScore),
-	)
+	p.log.Printf("%s: %s", "post.helpers.getPostScore", database.Log(qScore))
 
-	var score []int
-	if err := p.db.SelectContext(ctx, &score, qScore, ID); err != nil {
-		return 0, errors.Wrap(err, "selecting votes")
+	var score int
+	if err := p.db.GetContext(ctx, &score, qScore, ID); err != nil {
+		return 0, errors.Wrap(err, "counting votes")
 	}
-	return score[0], nil
+	return score, nil
 }
 
 //return slice of Comment for a single post
@@ -152,11 +150,15 @@ func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment,
 		WHERE 
 			post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qComments),
-	)
+	p.log.Printf("%s: %s", "post.helpers.selectCommentsByPostID", database.Log(qComments))
 
-	var rawComments []CommentWithAuthor
+	var rawComments []struct {
+		DateCreated time.Time `db:"date_created"`
+		AuthorName  string    `db:"name"`
+		AuthorID    string    `db:"user_id"`
+		Body        string    `db:"body"`
+		ID          string    `db:"comment_id"`
+	}
 	if err := p.db.SelectContext(ctx, &rawComments, qComments, ID); err != nil {
 		return nil, errors.Wrap(err, "selecting comments")
 	}
@@ -174,23 +176,18 @@ func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment,
 			ID:          comment.ID,
 		})
 	}
-	p.log.Printf("%s: %s: %s with %v", "post.Query",
-		database.Log(qComments), comments,
-	)
 	return comments, nil
 }
 
 //return all posts stored in DB
-func (p Post) selectAllPosts(ctx context.Context) ([]PostDB, error) {
+func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts`
 
-	p.log.Printf("%s: %s: %s", "post.Query",
-		database.Log(qPost),
-	)
+	p.log.Printf("%s: %s", "post.helpers.selectAllPosts", database.Log(qPost))
 
-	var posts []PostDB
+	var posts []postDB
 	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+		return nil, errors.Wrap(err, "selecting all posts")
 	}
 
 	for _, post := range posts {
@@ -204,16 +201,14 @@ func (p Post) selectAllPosts(ctx context.Context) ([]PostDB, error) {
 }
 
 //selectPostsByCategory returns all posts with a given category stored in DB
-func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]PostDB, error) {
+func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
-	p.log.Printf("%s: %s: %s", "post.QueryByCat",
-		database.Log(qPost),
-	)
+	p.log.Printf("%s: %s", "post.helpers.selectPostsByCategory", database.Log(qPost))
 
-	var posts []PostDB
+	var posts []postDB
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+		return nil, errors.Wrap(err, "selecting category posts")
 	}
 	for _, post := range posts {
 		score, err := p.getPostScore(ctx, post.ID)
@@ -226,16 +221,14 @@ func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]Pos
 }
 
 //selectPostsByUser returns all posts from user stored in DB
-func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]PostDB, error) {
+func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.QueryByUser",
-		database.Log(qPost),
-	)
+	p.log.Printf("%s: %s", "post.helpers.selectPostsByUser", database.Log(qPost))
 
-	var posts []PostDB
+	var posts []postDB
 	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+		return nil, errors.Wrap(err, "selecting users posts")
 	}
 	for _, post := range posts {
 		score, err := p.getPostScore(ctx, post.ID)
@@ -248,25 +241,21 @@ func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]PostDB, e
 }
 
 //getPostByID obtains post from DB using its ID
-func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
-	const q = `
-	SELECT * FROM
-		posts
-	WHERE
-		post_id = $1`
+func (p Post) getPostByID(ctx context.Context, postID string) (postDB, error) {
+	const q = `	SELECT * FROM posts	WHERE post_id = $1`
 
-	p.log.Printf("%s: %s", "product.getPostByID", database.Log(q, postID))
+	p.log.Printf("%s: %s", "post.helpers.getPostByID", database.Log(q, postID))
 
-	var post PostDB
+	var post postDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
 		if err == sql.ErrNoRows {
-			return PostDB{}, ErrNotFound
+			return postDB{}, ErrNotFound
 		}
-		return PostDB{}, errors.Wrap(err, "selecting post by ID")
+		return postDB{}, errors.Wrap(err, "selecting post by ID")
 	}
 	score, err := p.getPostScore(ctx, post.ID)
 	if err != nil {
-		return PostDB{}, err
+		return postDB{}, err
 	}
 	post.Score = score
 	return post, nil
@@ -277,35 +266,35 @@ func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
 func (p Post) checkPost(ctx context.Context, postID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM posts WHERE post_id = $1`
 
-	p.log.Printf("%s: %s", "post.checkPost", database.Log(qCheckExist))
+	p.log.Printf("%s: %s", "post.helpers.checkPost", database.Log(qCheckExist))
 
-	var exist []int
-	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID); err != nil {
+	var exist int
+	if err := p.db.GetContext(ctx, &exist, qCheckExist, postID); err != nil {
 		return errors.Wrap(err, "checking if post exists")
 	}
 
-	if exist[0] == 0 {
+	if exist == 0 {
 		return ErrNotFound
 	}
 	return nil
 }
 
 //insertPost adds one new row to posts DB
-func (p Post) insertPost(ctx context.Context, post PostDB) error {
+func (p Post) insertPost(ctx context.Context, post postDB) error {
 	const qPost = `
 	INSERT INTO posts
 		(post_id, views, type, title, category, payload, date_created, user_id)
 	VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	p.log.Printf("%s: %s: %s", "post.Create",
+	p.log.Printf("%s: %s", "post.helpers.insertPost",
 		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Payload, post.Category,
 			post.DateCreated, post.UserID),
 	)
 
 	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Views, post.Type, post.Title,
 		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
-		return errors.Wrap(err, "creating post")
+		return errors.Wrap(err, "inserting post")
 	}
 	return nil
 }
@@ -318,12 +307,10 @@ func (p Post) insertVote(ctx context.Context, postID string, userID string, vote
 	VALUES
 		($1, $2, $3)`
 
-	p.log.Printf("%s: %s: %s", "post.Create",
-		database.Log(qVote, postID, userID, vote),
-	)
+	p.log.Printf("%s: %s", "post.helpers.insertVote", database.Log(qVote, postID, userID, vote))
 
 	if _, err := p.db.ExecContext(ctx, qVote, postID, userID, vote); err != nil {
-		return errors.Wrap(err, "upvote created post")
+		return errors.Wrap(err, "inserting Vote")
 	}
 	return nil
 }
@@ -332,7 +319,7 @@ func (p Post) deletePost(ctx context.Context, postID string) error {
 
 	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
 
-	p.log.Printf("%s: %s: %s", "post.Delete", database.Log(qDeletePost, postID))
+	p.log.Printf("%s: %s", "post.helpers.deletePost", database.Log(qDeletePost, postID))
 
 	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
 		return errors.Wrapf(err, "deleting post %s", postID)
@@ -345,14 +332,14 @@ func (p Post) deletePost(ctx context.Context, postID string) error {
 func (p Post) checkVote(ctx context.Context, postID string, userID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM votes WHERE post_id = $1 AND user_id = $2`
 
-	p.log.Printf("%s: %s", "post.checkVote", database.Log(qCheckExist))
+	p.log.Printf("%s: %s", "post.helpers.checkVote", database.Log(qCheckExist))
 
-	var exist []int
-	if err := p.db.SelectContext(ctx, &exist, qCheckExist, postID, userID); err != nil {
+	var exist int
+	if err := p.db.GetContext(ctx, &exist, qCheckExist, postID, userID); err != nil {
 		return errors.Wrap(err, "checking if vote exists")
 	}
 
-	if exist[0] == 0 {
+	if exist == 0 {
 		return ErrNotFound
 	}
 	return nil
@@ -361,12 +348,10 @@ func (p Post) checkVote(ctx context.Context, postID string, userID string) error
 func (p Post) updateVote(ctx context.Context, postID string, userID string, vote int) error {
 	const qUpdateVote = `UPDATE votes SET vote = $3 WHERE post_id = $1 AND user_id = $2`
 
-	p.log.Printf("%s: %s", "post.Vote", database.Log(qUpdateVote))
+	p.log.Printf("%s: %s", "post.helpers.updateVote", database.Log(qUpdateVote))
 
 	if _, err := p.db.ExecContext(ctx, qUpdateVote, postID, userID, vote); err != nil {
 		return errors.Wrap(err, "updating vote")
 	}
 	return nil
 }
-
-// todo: function to make InfoLink or InfoText from all fields and payload

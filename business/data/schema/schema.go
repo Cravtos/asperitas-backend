@@ -22,7 +22,6 @@ func Migrate(db *sqlx.DB) error {
 // directory. It has the downside that it lacks syntax highlighting and may be
 // harder to read for some cases compared to using .sql files. You may also
 // consider a combined approach using a tool like packr or go-bindata.
-//todo consider removing score from posts
 var migrations = []darwin.Migration{
 	{
 		Version:     1.0,

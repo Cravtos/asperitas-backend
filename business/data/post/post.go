@@ -18,8 +18,6 @@ var (
 	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 
-	//todo ErrNotFound should exist not only for posts (but maybe it should be more serious problem than with Post)
-
 	// ErrNotFound is used when a specific Post is requested but does not exist.
 	ErrNotFound = errors.New("post not found")
 )
@@ -40,7 +38,7 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-	post := PostDB{
+	post := postDB{
 		ID:          uuid.New().String(),
 		Score:       0,
 		Views:       0,

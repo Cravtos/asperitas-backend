@@ -13,7 +13,7 @@ type postGroup struct {
 	post post.Post
 }
 
-func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, _ *http.Request) error {
 	posts, err := pg.post.Query(ctx)
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func (pg postGroup) query(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 func (pg postGroup) queryByID(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	params := web.Params(r)
-	pst, err := pg.post.QueryByID(ctx, params["post_id"]) // Todo: add func, returning Info instead of PostDB
+	pst, err := pg.post.QueryByID(ctx, params["post_id"])
 	if err != nil {
 		switch err {
 		case post.ErrInvalidID:
@@ -50,7 +50,6 @@ func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errors.New("claims missing from context")
 	}
 
-	// Todo: look at how Decode works if not all fields provided
 	var np post.NewPost
 	if err := web.Decode(r, &np); err != nil {
 		return errors.Wrapf(err, "unable to decode payload")
@@ -114,7 +113,6 @@ func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *h
 
 	return web.Respond(ctx, w, pst, http.StatusOK)
 }
-
 
 func (pg postGroup) upvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	claims, ok := ctx.Value(auth.Key).(auth.Claims)

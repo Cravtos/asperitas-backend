@@ -2,7 +2,18 @@ package post
 
 import "time"
 
-// Todo: consider differ structs for "DB" and "JSON" use
+// postDB represents an individual post in database. (with additional field "score" counted using votes table)
+type postDB struct {
+	ID          string    `db:"post_id"`
+	Score       int       `db:"score"`
+	Views       int       `db:"views"`
+	Type        string    `db:"type"`
+	Title       string    `db:"title"`
+	Category    string    `db:"category"`
+	Payload     string    `db:"payload"`
+	DateCreated time.Time `db:"date_created"`
+	UserID      string    `db:"user_id"`
+}
 
 // Author represents info about author
 type Author struct {
@@ -14,46 +25,6 @@ type Author struct {
 type Vote struct {
 	User string `db:"user_id" json:"user"`
 	Vote int    `db:"vote" json:"vote"`
-}
-
-// Comment represents info about comments for the post.
-type Comment struct {
-	DateCreated time.Time `db:"date_created" json:"created"`
-	Author      Author    `json:"author"`
-	Body        string    `db:"body" json:"body"`
-	ID          string    `db:"comment_id" json:"id"`
-}
-
-// todo: find better name
-// CommentWithAuthor represents info for the comment.
-// It is used when getting comments info from database.
-type CommentWithAuthor struct {
-	DateCreated time.Time `db:"date_created"`
-	AuthorName  string    `db:"name"`
-	AuthorID    string    `db:"user_id"`
-	Body        string    `db:"body"`
-	ID          string    `db:"comment_id"`
-}
-
-// Comment represents info about comments in database.
-type CommentDB struct {
-	DateCreated time.Time `json:"created"`
-	UserID      string    `json:"user_id"`
-	Body        string    `json:"body"`
-	ID          string    `json:"id"`
-}
-
-// PostDB represents an individual post in database. (with score counted using votes table)
-type PostDB struct {
-	ID          string    `db:"post_id"`
-	Score       int       `db:"score"`
-	Views       int       `db:"views"`
-	Type        string    `db:"type"`
-	Title       string    `db:"title"`
-	Category    string    `db:"category"`
-	Payload     string    `db:"payload"`
-	DateCreated time.Time `db:"date_created"`
-	UserID      string    `db:"user_id"`
 }
 
 // Info generalizes text and link posts
@@ -94,16 +65,24 @@ type InfoLink struct {
 func (it InfoText) Info() {}
 func (il InfoLink) Info() {}
 
-// todo: validation on text or url
-// NewPost is what we require from users when adding a Post.
-type NewPost struct {
-	Type     string `db:"type" json:"type" default:"link"`
-	Title    string `db:"title" json:"title" validate:"required"`
-	Category string `db:"category" json:"category" validate:"required"`
-	Text     string `db:"text" json:"text"`
-	URL      string `db:"url" json:"url"`
+// Comment represents info about comments for the post prepared to be sent to user.
+type Comment struct {
+	DateCreated time.Time `json:"created"`
+	Author      Author    `json:"author"`
+	Body        string    `json:"body"`
+	ID          string    `json:"id"`
 }
 
+// NewPost is what we require from users when adding a Post.
+type NewPost struct {
+	Type     string `json:"type" default:"link"`
+	Title    string `json:"title" validate:"required"`
+	Category string `json:"category" validate:"required"`
+	Text     string `json:"text"`
+	URL      string `json:"url"`
+}
+
+// NewComment is what we require from users when adding a Comment.
 type NewComment struct {
 	Text string `json:"comment" validate:"required"`
 }
