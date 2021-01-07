@@ -4,7 +4,6 @@ package post
 import (
 	"context"
 	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -223,14 +222,6 @@ func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote 
 		if err := p.updateVote(ctx, postID, claims.User.ID, vote); err != nil {
 			return nil, err
 		}
-	}
-
-	const qUpdatePost = `UPDATE posts SET score = score+$2 WHERE post_id = $1`
-
-	p.log.Printf("%s: %s", "post.Vote", database.Log(qUpdatePost))
-
-	if _, err := p.db.ExecContext(ctx, qUpdatePost, postID, vote); err != nil {
-		return nil, errors.Wrap(err, "updating vote")
 	}
 
 	pst, err := p.QueryByID(ctx, postID)

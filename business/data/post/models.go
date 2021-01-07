@@ -43,7 +43,7 @@ type CommentDB struct {
 	ID          string    `json:"id"`
 }
 
-// PostDB represents an individual post in database.
+// PostDB represents an individual post in database. (with score counted using votes table)
 type PostDB struct {
 	ID          string    `db:"post_id"`
 	Score       int       `db:"score"`
@@ -90,7 +90,6 @@ type InfoLink struct {
 	Comments         []Comment `json:"comments"`
 	UpvotePercentage int       `json:"upvotePercentage"`
 }
-
 
 func (it InfoText) Info() {}
 func (il InfoLink) Info() {}

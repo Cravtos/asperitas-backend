@@ -43,7 +43,6 @@ CREATE TABLE users (
 		Script: `
 CREATE TABLE posts (
 	post_id          UUID,
-	score            INT,
 	views            INT,
 	type             TEXT,
 	title            TEXT,

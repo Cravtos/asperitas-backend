@@ -127,6 +127,21 @@ func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error
 	return votes, nil
 }
 
+//returns score for a single post
+func (p Post) getPostScore(ctx context.Context, ID string) (int, error) {
+	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1`
+
+	p.log.Printf("%s: %s: %s", "post.Query",
+		database.Log(qScore),
+	)
+
+	var score []int
+	if err := p.db.SelectContext(ctx, &score, qScore, ID); err != nil {
+		return 0, errors.Wrap(err, "selecting votes")
+	}
+	return score[0], nil
+}
+
 //return slice of Comment for a single post
 func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment, error) {
 	const qComments = `
@@ -177,6 +192,14 @@ func (p Post) selectAllPosts(ctx context.Context) ([]PostDB, error) {
 	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
 		return nil, errors.Wrap(err, "selecting posts")
 	}
+
+	for _, post := range posts {
+		score, err := p.getPostScore(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Score = score
+	}
 	return posts, nil
 }
 
@@ -192,6 +215,13 @@ func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]Pos
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
 		return nil, errors.Wrap(err, "selecting posts")
 	}
+	for _, post := range posts {
+		score, err := p.getPostScore(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Score = score
+	}
 	return posts, nil
 }
 
@@ -206,6 +236,13 @@ func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]PostDB, e
 	var posts []PostDB
 	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting posts")
+	}
+	for _, post := range posts {
+		score, err := p.getPostScore(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+		post.Score = score
 	}
 	return posts, nil
 }
@@ -227,6 +264,11 @@ func (p Post) getPostByID(ctx context.Context, postID string) (PostDB, error) {
 		}
 		return PostDB{}, errors.Wrap(err, "selecting post by ID")
 	}
+	score, err := p.getPostScore(ctx, post.ID)
+	if err != nil {
+		return PostDB{}, err
+	}
+	post.Score = score
 	return post, nil
 }
 
@@ -252,16 +294,16 @@ func (p Post) checkPost(ctx context.Context, postID string) error {
 func (p Post) insertPost(ctx context.Context, post PostDB) error {
 	const qPost = `
 	INSERT INTO posts
-		(post_id, score, views, type, title, category, payload, date_created, user_id)
+		(post_id, views, type, title, category, payload, date_created, user_id)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	p.log.Printf("%s: %s: %s", "post.Create",
-		database.Log(qPost, post.ID, post.Score, post.Views, post.Type, post.Title, post.Payload, post.Category,
+		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Payload, post.Category,
 			post.DateCreated, post.UserID),
 	)
 
-	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Score, post.Views, post.Type, post.Title,
+	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Views, post.Type, post.Title,
 		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
 		return errors.Wrap(err, "creating post")
 	}
