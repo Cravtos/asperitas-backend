@@ -229,3 +229,28 @@ func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote 
 
 	return pst, nil
 }
+
+//Unvote erases vote to the post from a single user
+func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
+		if err != ErrNotFound {
+			return nil, err
+		} else {
+			return nil, nil
+		}
+	}
+	if err := p.deleteVote(ctx, postID, claims.User.ID); err != nil {
+		return nil, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
+}

@@ -148,3 +148,18 @@ func (pg postGroup) downvote(ctx context.Context, w http.ResponseWriter, r *http
 
 	return web.Respond(ctx, w, pst, http.StatusOK)
 }
+
+func (pg postGroup) unvote(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return errors.New("claims missing from context")
+	}
+
+	params := web.Params(r)
+	pst, err := pg.post.Unvote(ctx, claims, params["post_id"])
+	if err != nil {
+		return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusOK)
+}

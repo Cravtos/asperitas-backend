@@ -29,7 +29,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.HandleDebug(http.MethodGet, "/readiness", cg.readiness)
 	app.HandleDebug(http.MethodGet, "/liveness", cg.liveness)
 
-	ug := userGroup {
+	ug := userGroup{
 		user: user.New(log, db),
 		auth: a,
 	}
@@ -38,7 +38,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.Handle(http.MethodPost, "/api/login", ug.login)
 
 	//Register post and post endpoints
-	p := postGroup {
+	p := postGroup{
 		post: post.New(log, db),
 	}
 
@@ -50,7 +50,9 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.Handle(http.MethodPost, "/api/posts/", p.create, mid.Authenticate(a))
 	app.Handle(http.MethodGet, "/api/posts/:post_id/upvote", p.upvote, mid.Authenticate(a))
 	app.Handle(http.MethodGet, "/api/posts/:post_id/downvote", p.downvote, mid.Authenticate(a))
-	//todo: app.Handle(http.MethodGet, "/api/posts/:post_id/:comment_id", p.unvote, mid.Authenticate(a))
+	app.Handle(http.MethodGet, "/api/posts/:post_id/unvote", p.unvote, mid.Authenticate(a))
+	//todo how it should work?
+	//app.Handle(http.MethodGet, "/api/posts/:post_id/:comment_id", p.unvote, mid.Authenticate(a))
 	app.Handle(http.MethodDelete, "/api/post/:post_id", p.delete, mid.Authenticate(a))
 	app.Handle(http.MethodGet, "/api/user/:user", p.queryByUser, mid.Authenticate(a))
 

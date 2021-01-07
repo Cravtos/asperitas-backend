@@ -242,7 +242,7 @@ func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]postDB, e
 
 //getPostByID obtains post from DB using its ID
 func (p Post) getPostByID(ctx context.Context, postID string) (postDB, error) {
-	const q = `	SELECT * FROM posts	WHERE post_id = $1`
+	const q = `	SELECT * FROM posts WHERE post_id = $1`
 
 	p.log.Printf("%s: %s", "post.helpers.getPostByID", database.Log(q, postID))
 
@@ -352,6 +352,18 @@ func (p Post) updateVote(ctx context.Context, postID string, userID string, vote
 
 	if _, err := p.db.ExecContext(ctx, qUpdateVote, postID, userID, vote); err != nil {
 		return errors.Wrap(err, "updating vote")
+	}
+	return nil
+}
+
+func (p Post) deleteVote(ctx context.Context, postID string, userID string) error {
+
+	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
+
+	p.log.Printf("%s: %s", "post.helpers.deleteVote", database.Log(qDeleteVote, postID, userID))
+
+	if _, err := p.db.ExecContext(ctx, qDeleteVote, postID, userID); err != nil {
+		return errors.Wrapf(err, "deleting vote on %s from %s", postID, userID)
 	}
 	return nil
 }
