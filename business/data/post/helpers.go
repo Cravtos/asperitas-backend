@@ -367,3 +367,20 @@ func (p Post) deleteVote(ctx context.Context, postID string, userID string) erro
 	}
 	return nil
 }
+
+func (p Post) insertComment(
+	ctx context.Context, commentID string, postID string, userID string, text string, now time.Time) error {
+	const qComment = `
+	INSERT INTO comments
+		(comment_id, post_id, user_id, body, date_created)
+	VALUES
+		($1, $2, $3, $4, $5)`
+
+	p.log.Printf("%s: %s", "post.helpers.insertComment",
+		database.Log(qComment, commentID, postID, userID, text, now))
+
+	if _, err := p.db.ExecContext(ctx, qComment, commentID, postID, userID, text, now); err != nil {
+		return errors.Wrap(err, "inserting Comment")
+	}
+	return nil
+}

@@ -163,3 +163,29 @@ func (pg postGroup) unvote(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	return web.Respond(ctx, w, pst, http.StatusOK)
 }
+
+func (pg postGroup) createComment(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	v, ok := ctx.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return web.NewShutdownError("web value missing from context")
+	}
+
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return errors.New("claims missing from context")
+	}
+
+	var nc post.NewComment
+	if err := web.Decode(r, &nc); err != nil {
+		return errors.Wrapf(err, "unable to decode payload")
+	}
+
+	params := web.Params(r)
+
+	pst, err := pg.post.CreateComment(ctx, claims, nc, params["post_id"], v.Now)
+	if err != nil {
+		return errors.Wrapf(err, "creating new comment: %+v", nc)
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusCreated)
+}

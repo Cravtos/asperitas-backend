@@ -254,3 +254,21 @@ func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (In
 
 	return pst, nil
 }
+
+func (p Post) CreateComment(
+	ctx context.Context, claims auth.Claims, nc NewComment, postID string, now time.Time) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	if err := p.insertComment(ctx, uuid.New().String(), postID, claims.User.ID, nc.Text, now); err != nil {
+		return InfoText{}, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after creating comment")
+	}
+	return pst, nil
+
+}
