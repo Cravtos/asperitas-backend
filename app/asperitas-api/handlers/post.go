@@ -29,7 +29,7 @@ func (pg postGroup) queryByID(ctx context.Context, w http.ResponseWriter, r *htt
 		switch err {
 		case post.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
-		case post.ErrNotFound:
+		case post.ErrPostNotFound:
 			return web.NewRequestError(err, http.StatusNotFound)
 		default:
 			return errors.Wrapf(err, "ID: %s", params["post_id"])
@@ -87,7 +87,7 @@ func (pg postGroup) queryByCat(ctx context.Context, w http.ResponseWriter, r *ht
 	pst, err := pg.post.QueryByCat(ctx, params["category"])
 	if err != nil {
 		switch err {
-		case post.ErrNotFound:
+		case post.ErrPostNotFound:
 			return web.NewRequestError(err, http.StatusNotFound)
 		default:
 			return errors.Wrapf(err, "ID: %s", params["category"])
@@ -104,7 +104,7 @@ func (pg postGroup) queryByUser(ctx context.Context, w http.ResponseWriter, r *h
 		switch err {
 		case post.ErrInvalidID:
 			return web.NewRequestError(err, http.StatusBadRequest)
-		case post.ErrNotFound:
+		case post.ErrPostNotFound:
 			return web.NewRequestError(err, http.StatusNotFound)
 		default:
 			return errors.Wrapf(err, "ID: %s", params["user"])
@@ -124,8 +124,8 @@ func (pg postGroup) upvote(ctx context.Context, w http.ResponseWriter, r *http.R
 	pst, err := pg.post.Vote(ctx, claims, params["post_id"], 1)
 	if err != nil {
 		switch err {
-		case post.ErrNotFound:
-			return web.NewRequestError(post.ErrNotFound, http.StatusBadRequest)
+		case post.ErrPostNotFound:
+			return web.NewRequestError(post.ErrPostNotFound, http.StatusBadRequest)
 		default:
 			return errors.Wrapf(err, "upvoting post with ID: %s", params["post_id"])
 		}
@@ -143,7 +143,12 @@ func (pg postGroup) downvote(ctx context.Context, w http.ResponseWriter, r *http
 	params := web.Params(r)
 	pst, err := pg.post.Vote(ctx, claims, params["post_id"], -1)
 	if err != nil {
-		return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
+		switch err {
+		case post.ErrPostNotFound:
+			return web.NewRequestError(post.ErrPostNotFound, http.StatusBadRequest)
+		default:
+			return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
+		}
 	}
 
 	return web.Respond(ctx, w, pst, http.StatusOK)
@@ -158,7 +163,12 @@ func (pg postGroup) unvote(ctx context.Context, w http.ResponseWriter, r *http.R
 	params := web.Params(r)
 	pst, err := pg.post.Unvote(ctx, claims, params["post_id"])
 	if err != nil {
-		return errors.Wrapf(err, "downvoting post with ID: %s", params["post_id"])
+		switch err {
+		case post.ErrPostNotFound:
+			return web.NewRequestError(post.ErrPostNotFound, http.StatusBadRequest)
+		default:
+			return errors.Wrapf(err, "unvoting post with ID: %s", params["post_id"])
+		}
 	}
 
 	return web.Respond(ctx, w, pst, http.StatusOK)
@@ -184,8 +194,37 @@ func (pg postGroup) createComment(ctx context.Context, w http.ResponseWriter, r 
 
 	pst, err := pg.post.CreateComment(ctx, claims, nc, params["post_id"], v.Now)
 	if err != nil {
-		return errors.Wrapf(err, "creating new comment: %+v", nc)
+		switch err {
+		case post.ErrPostNotFound:
+			return web.NewRequestError(post.ErrPostNotFound, http.StatusBadRequest)
+		default:
+			return errors.Wrapf(err, "creating new comment: %+v", nc)
+		}
 	}
 
 	return web.Respond(ctx, w, pst, http.StatusCreated)
+}
+
+func (pg postGroup) deleteComment(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	claims, ok := ctx.Value(auth.Key).(auth.Claims)
+	if !ok {
+		return errors.New("claims missing from context")
+	}
+
+	params := web.Params(r)
+	pst, err := pg.post.DeleteComment(ctx, claims, params["post_id"], params["comment_id"])
+	if err != nil {
+		switch err {
+		case post.ErrCommentNotFound:
+			return web.NewRequestError(post.ErrCommentNotFound, http.StatusBadRequest)
+		case post.ErrPostNotFound:
+			return web.NewRequestError(post.ErrPostNotFound, http.StatusBadRequest)
+		case post.ErrForbidden:
+			return web.NewRequestError(post.ErrForbidden, http.StatusForbidden)
+		default:
+			return errors.Wrapf(err, "deleting comment with ID: %s", params["post_id"])
+		}
+	}
+
+	return web.Respond(ctx, w, pst, http.StatusOK)
 }

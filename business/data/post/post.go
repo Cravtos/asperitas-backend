@@ -18,8 +18,11 @@ var (
 	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 
-	// ErrNotFound is used when a specific Post is requested but does not exist.
-	ErrNotFound = errors.New("post not found")
+	// ErrPostNotFound is used when a specific Post is requested but does not exist.
+	ErrPostNotFound = errors.New("post not found")
+
+	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
+	ErrCommentNotFound = errors.New("comment not found")
 )
 
 // Post manages the set of API's for product access.
@@ -77,7 +80,7 @@ func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) err
 		return err
 	}
 
-	if claims.User.ID == post.UserID {
+	if claims.User.ID != post.UserID {
 		return ErrForbidden
 	}
 
@@ -210,7 +213,7 @@ func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote 
 	}
 
 	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
-		if err != ErrNotFound {
+		if err != ErrPostNotFound {
 			return nil, err
 		}
 		if err := p.insertVote(ctx, postID, claims.User.ID, vote); err != nil {
@@ -237,7 +240,7 @@ func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (In
 	}
 
 	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
-		if err != ErrNotFound {
+		if err != ErrPostNotFound {
 			return nil, err
 		} else {
 			return nil, nil
@@ -271,4 +274,28 @@ func (p Post) CreateComment(
 	}
 	return pst, nil
 
+}
+
+func (p Post) DeleteComment(ctx context.Context, claims auth.Claims, postID string, commentID string) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+	comment, err := p.getCommentByID(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if claims.User.ID != comment.Author.ID {
+		return nil, ErrForbidden
+	}
+	if err := p.deleteComment(ctx, commentID); err != nil {
+		return nil, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
 }

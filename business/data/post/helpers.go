@@ -249,7 +249,7 @@ func (p Post) getPostByID(ctx context.Context, postID string) (postDB, error) {
 	var post postDB
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
 		if err == sql.ErrNoRows {
-			return postDB{}, ErrNotFound
+			return postDB{}, ErrPostNotFound
 		}
 		return postDB{}, errors.Wrap(err, "selecting post by ID")
 	}
@@ -274,7 +274,7 @@ func (p Post) checkPost(ctx context.Context, postID string) error {
 	}
 
 	if exist == 0 {
-		return ErrNotFound
+		return ErrPostNotFound
 	}
 	return nil
 }
@@ -340,7 +340,7 @@ func (p Post) checkVote(ctx context.Context, postID string, userID string) error
 	}
 
 	if exist == 0 {
-		return ErrNotFound
+		return ErrPostNotFound
 	}
 	return nil
 }
@@ -381,6 +381,55 @@ func (p Post) insertComment(
 
 	if _, err := p.db.ExecContext(ctx, qComment, commentID, postID, userID, text, now); err != nil {
 		return errors.Wrap(err, "inserting Comment")
+	}
+	return nil
+}
+
+func (p Post) getCommentByID(ctx context.Context, commentID string) (Comment, error) {
+	const qComment = `
+		SELECT name, user_id, cm.date_created, body, comment_id 
+		FROM comments cm join users using(user_id) 
+		WHERE comment_id = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.getCommentByID", database.Log(qComment, commentID))
+
+	var rawComment struct {
+		DateCreated time.Time `db:"date_created"`
+		AuthorName  string    `db:"name"`
+		AuthorID    string    `db:"user_id"`
+		Body        string    `db:"body"`
+		ID          string    `db:"comment_id"`
+	}
+	if err := p.db.GetContext(ctx, &rawComment, qComment, commentID); err != nil {
+		if err == sql.ErrNoRows {
+			return Comment{}, ErrCommentNotFound
+		}
+		return Comment{}, errors.Wrap(err, "selecting comment by ID")
+	}
+
+	author := Author{
+		Username: rawComment.AuthorName,
+		ID:       rawComment.AuthorID,
+	}
+	comment := Comment{
+		DateCreated: rawComment.DateCreated,
+		Author:      author,
+		Body:        rawComment.Body,
+		ID:          rawComment.ID,
+	}
+	return comment, nil
+}
+
+func (p Post) deleteComment(ctx context.Context, commentID string) error {
+	const qDeleteComment = `DELETE FROM comments WHERE comment_id = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.deleteComment", database.Log(qDeleteComment, commentID))
+
+	if _, err := p.db.ExecContext(ctx, qDeleteComment, commentID); err != nil {
+		if err == sql.ErrNoRows {
+			return ErrCommentNotFound
+		}
+		return errors.Wrapf(err, "deleting comment %s", commentID)
 	}
 	return nil
 }
