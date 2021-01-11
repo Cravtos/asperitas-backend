@@ -21,7 +21,7 @@ export PROJECT = asperitas-backend
 # ==============================================================================
 # Building containers
 
-all: asperitas metrics
+all: asperitas
 
 asperitas:
 	docker build \
