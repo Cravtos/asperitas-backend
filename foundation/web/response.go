@@ -19,7 +19,6 @@ func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statu
 		return NewShutdownError("web value missing from context")
 	}
 	v.StatusCode = statusCode
-
 	// If there is nothing to marshal then set status code and return.
 	if statusCode == http.StatusNoContent {
 		w.WriteHeader(statusCode)

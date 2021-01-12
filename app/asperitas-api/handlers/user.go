@@ -6,6 +6,7 @@ import (
 	"github.com/cravtos/asperitas-backend/business/data/user"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
+	"log"
 	"net/http"
 )
 
@@ -87,4 +88,10 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
+}
+
+func (ug userGroup) allowPOST(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	log.Printf("head %+v \n", r.Header)
+	w.Header().Set("Allow", "POST")
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }
