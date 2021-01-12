@@ -3,7 +3,6 @@ package post
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
@@ -195,14 +194,12 @@ func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 		return nil, errors.Wrap(err, "selecting all posts")
 	}
 
-	for _, post := range posts {
-		fmt.Println("hop")
-		score, err := p.getPostScore(ctx, post.ID)
-		fmt.Println("hey")
+	for i := range posts {
+		score, err := p.getPostScore(ctx, posts[i].ID)
 		if err != nil {
 			return nil, err
 		}
-		post.Score = score
+		posts[i].Score = score
 	}
 	return posts, nil
 }
@@ -217,12 +214,12 @@ func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]pos
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
 		return nil, errors.Wrap(err, "selecting category posts")
 	}
-	for _, post := range posts {
-		score, err := p.getPostScore(ctx, post.ID)
+	for i := range posts {
+		score, err := p.getPostScore(ctx, posts[i].ID)
 		if err != nil {
 			return nil, err
 		}
-		post.Score = score
+		posts[i].Score = score
 	}
 	return posts, nil
 }
@@ -237,12 +234,12 @@ func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]postDB, e
 	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting users posts")
 	}
-	for _, post := range posts {
-		score, err := p.getPostScore(ctx, post.ID)
+	for i := range posts {
+		score, err := p.getPostScore(ctx, posts[i].ID)
 		if err != nil {
 			return nil, err
 		}
-		post.Score = score
+		posts[i].Score = score
 	}
 	return posts, nil
 }
