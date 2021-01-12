@@ -23,6 +23,8 @@ var (
 
 	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
 	ErrCommentNotFound = errors.New("comment not found")
+
+	ErrWrongPostType = errors.New("new post should be of type url or text")
 )
 
 // Post manages the set of API's for product access.
@@ -51,6 +53,9 @@ func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now ti
 		Payload:     np.Text,
 		DateCreated: now,
 		UserID:      claims.User.ID,
+	}
+	if post.Type != "url" && post.Type != "text" {
+		return nil, ErrWrongPostType
 	}
 	if post.Type == "url" {
 		post.Payload = np.URL

@@ -9,7 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// todo: it may be better to move this struct to other place like models (sure)
 type User struct {
 	Username string `json:"username"`
 	ID       string `json:"id"`

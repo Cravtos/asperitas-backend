@@ -57,7 +57,12 @@ func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	pst, err := pg.post.Create(ctx, claims, np, v.Now)
 	if err != nil {
-		return errors.Wrapf(err, "creating new post: %+v", np)
+		switch err {
+		case post.ErrWrongPostType:
+			web.NewRequestError(err, http.StatusBadRequest)
+		default:
+			return errors.Wrapf(err, "creating new post: %+v", np)
+		}
 	}
 
 	return web.Respond(ctx, w, pst, http.StatusCreated)
