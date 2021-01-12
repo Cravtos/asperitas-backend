@@ -118,6 +118,19 @@ func (p Post) getAuthorByID(ctx context.Context, ID string) (Author, error) {
 	return author, nil
 }
 
+//obtains Author using its Name in DB
+func (p Post) getAuthorByName(ctx context.Context, name string) (Author, error) {
+	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.getAuthorByID", database.Log(qAuthor))
+
+	var author []Author
+	if err := p.db.SelectContext(ctx, &author, qAuthor, name); err != nil {
+		return Author{}, errors.Wrap(err, "selecting authors")
+	}
+	return author[0], nil
+}
+
 //returns slice of Vote for a single post
 func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error) {
 	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`

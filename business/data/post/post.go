@@ -182,13 +182,12 @@ func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
 }
 
 // QueryByUser finds the posts identified by a given user ID.
-func (p Post) QueryByUser(ctx context.Context, userID string) ([]Info, error) {
-	author, err := p.getAuthorByID(ctx, userID)
+func (p Post) QueryByUser(ctx context.Context, name string) ([]Info, error) {
+	author, err := p.getAuthorByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-
-	posts, err := p.selectPostsByUser(ctx, userID)
+	posts, err := p.selectPostsByUser(ctx, author.ID)
 	if err != nil {
 		return nil, err
 	}
