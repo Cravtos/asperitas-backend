@@ -88,3 +88,9 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 
 	return web.Respond(ctx, w, tkn, http.StatusOK)
 }
+
+func (ug userGroup) allowPOST(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "content-type")
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
+}

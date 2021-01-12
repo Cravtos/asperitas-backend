@@ -19,7 +19,6 @@ func Panics(log *log.Logger) web.Middleware {
 
 		// Create the handler that will be attached in the middleware chain.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) (err error) {
-
 			// Defer a function to recover from a panic and set the err return
 			// variable after the fact.
 			defer func() {
