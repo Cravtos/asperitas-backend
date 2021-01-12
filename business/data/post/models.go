@@ -17,7 +17,7 @@ type postDB struct {
 
 // Author represents info about author
 type Author struct {
-	Username string `db:"name" json:"name"`
+	Username string `db:"name" json:"username"`
 	ID       string `db:"user_id" json:"id"`
 }
 

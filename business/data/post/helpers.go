@@ -3,6 +3,7 @@ package post
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
@@ -129,13 +130,13 @@ func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error
 
 //returns score for a single post
 func (p Post) getPostScore(ctx context.Context, ID string) (int, error) {
-	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1`
+	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1 HAVING SUM(vote) is not null`
 
 	p.log.Printf("%s: %s", "post.helpers.getPostScore", database.Log(qScore))
 
 	var score int
 	if err := p.db.GetContext(ctx, &score, qScore, ID); err != nil {
-		return 0, errors.Wrap(err, "counting votes")
+		return 0, nil
 	}
 	return score, nil
 }
@@ -191,7 +192,9 @@ func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	}
 
 	for _, post := range posts {
+		fmt.Println("hop")
 		score, err := p.getPostScore(ctx, post.ID)
+		fmt.Println("hey")
 		if err != nil {
 			return nil, err
 		}

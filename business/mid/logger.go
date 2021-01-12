@@ -25,7 +25,6 @@ func Logger(log *log.Logger) web.Middleware {
 			if !ok {
 				return web.NewShutdownError("web value missing from context")
 			}
-
 			log.Printf("started: %s %s -> %s",
 				r.Method, r.URL.Path, r.RemoteAddr,
 			)

@@ -34,8 +34,8 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 		auth: a,
 	}
 
-	app.Handle(http.MethodPost, "/api/register", ug.register)
-	app.Handle(http.MethodPost, "/api/login", ug.login)
+	app.Handle(http.MethodOptions, "/api/register", ug.register)
+	app.Handle(http.MethodOptions, "/api/login", ug.login)
 
 	//Register post and post endpoints
 	p := postGroup{

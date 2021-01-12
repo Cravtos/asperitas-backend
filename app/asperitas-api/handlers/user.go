@@ -59,21 +59,21 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 	}
 
 	u := struct {
-		Name string
-		Password string
+		Username string `json:"username"`
+		Password string `json:"password"`
 	}{}
 
 	if err := web.Decode(r, &u); err != nil {
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	claims, err := ug.user.Authenticate(ctx, u.Name, u.Password, v.Now)
+	claims, err := ug.user.Authenticate(ctx, u.Username, u.Password, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:
 			return web.NewRequestError(err, http.StatusForbidden)
 		default:
-			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Name)
+			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Username)
 		}
 	}
 
