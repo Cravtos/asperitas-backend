@@ -27,6 +27,7 @@ func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 	var info Info
 	if post.Type == "url" {
 		info = InfoLink{
+			Type:        "link",
 			ID:          post.ID,
 			Score:       post.Score,
 			Views:       post.Views,
@@ -46,6 +47,7 @@ func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 		}
 	} else {
 		info = InfoText{
+			Type:        "text",
 			ID:          post.ID,
 			Score:       post.Score,
 			Views:       post.Views,
@@ -72,6 +74,7 @@ func infoByDBdata(post postDB, author Author, votes []Vote, comments []Comment) 
 	var info Info
 	if post.Type == "url" {
 		info = InfoLink{
+			Type:             "link",
 			ID:               post.ID,
 			Score:            post.Score,
 			Views:            post.Views,
@@ -86,6 +89,7 @@ func infoByDBdata(post postDB, author Author, votes []Vote, comments []Comment) 
 		}
 	} else {
 		info = InfoText{
+			Type:             "text",
 			ID:               post.ID,
 			Score:            post.Score,
 			Views:            post.Views,

@@ -1,6 +1,8 @@
 package post
 
-import "time"
+import (
+	"time"
+)
 
 // postDB represents an individual post in database. (with additional field "score" counted using votes table)
 type postDB struct {
@@ -34,6 +36,7 @@ type Info interface {
 
 // InfoText represents an individual text post which is sent to user.
 type InfoText struct {
+	Type             string    `json:"type"`
 	ID               string    `json:"id"`
 	Score            int       `json:"score"`
 	Views            int       `json:"views"`
@@ -49,6 +52,7 @@ type InfoText struct {
 
 // InfoLink represents an individual link post which is sent to user.
 type InfoLink struct {
+	Type             string    `json:"type"`
 	ID               string    `json:"id"`
 	Score            int       `json:"score"`
 	Views            int       `json:"views"`
