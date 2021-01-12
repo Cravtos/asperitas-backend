@@ -22,7 +22,7 @@ services:
       - shared-network
     image: asperitas-api-amd64:1.0
     ports:
-      - 3000:3000 # CRUD API
+      - 8080:8080 # CRUD API
       - 4000:4000 # DEBUG API
     depends_on:
       - db

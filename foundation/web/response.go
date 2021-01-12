@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
 )
 
 // Respond converts a Go value to JSON and sends it to the client.
 func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statusCode int) error {
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	// Set the status code for the request logger middleware.
 	// If the context is missing this value, request the service
 	// to be shutdown gracefully.
@@ -69,4 +70,11 @@ func RespondError(ctx context.Context, w http.ResponseWriter, err error) error {
 	}
 
 	return nil
+}
+
+func AllowMethods(ctx context.Context, w http.ResponseWriter, methods []string) error {
+	w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
+	// todo: it may be better to get values as argument
+	w.Header().Set("Access-Control-Allow-Headers", "authorization,content-type")
+	return Respond(ctx, w, nil, http.StatusNoContent)
 }
