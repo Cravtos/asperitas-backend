@@ -10,7 +10,7 @@ import (
 
 // Respond converts a Go value to JSON and sends it to the client.
 func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statusCode int) error {
-
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	// Set the status code for the request logger middleware.
 	// If the context is missing this value, request the service
 	// to be shutdown gracefully.
@@ -33,7 +33,6 @@ func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statu
 
 	// Set the content type and headers once we know marshaling has succeeded.
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 	// Write the status code to the response.
 	w.WriteHeader(statusCode)
 
