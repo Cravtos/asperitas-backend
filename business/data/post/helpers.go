@@ -200,7 +200,7 @@ func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment,
 	return comments, nil
 }
 
-//return all posts stored in DB
+// selectAllPosts return all posts stored in DB
 func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts`
 
@@ -336,15 +336,26 @@ func (p Post) insertVote(ctx context.Context, postID string, userID string, vote
 	return nil
 }
 
+// deletePost deletes post with all its votes and comments
 func (p Post) deletePost(ctx context.Context, postID string) error {
+	const qDeleteVotes = `DELETE FROM votes WHERE post_id = $1`
+	p.log.Printf("%s: %s", "post.helpers.deletePost", database.Log(qDeleteVotes, postID))
+	if _, err := p.db.ExecContext(ctx, qDeleteVotes, postID); err != nil {
+		return errors.Wrapf(err, "deleting votes %s", postID)
+	}
+
+	const qDeleteComments = `DELETE FROM comments WHERE post_id = $1`
+	p.log.Printf("%s: %s", "post.helpers.deletePost", database.Log(qDeleteComments, postID))
+	if _, err := p.db.ExecContext(ctx, qDeleteComments, postID); err != nil {
+		return errors.Wrapf(err, "deleting comments %s", postID)
+	}
 
 	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
-
 	p.log.Printf("%s: %s", "post.helpers.deletePost", database.Log(qDeletePost, postID))
-
 	if _, err := p.db.ExecContext(ctx, qDeletePost, postID); err != nil {
 		return errors.Wrapf(err, "deleting post %s", postID)
 	}
+
 	return nil
 }
 

@@ -84,7 +84,8 @@ func (pg postGroup) delete(ctx context.Context, w http.ResponseWriter, r *http.R
 		}
 	}
 
-	return web.Respond(ctx, w, nil, http.StatusNoContent)
+	success := web.MessageResponse{Msg: "success"}
+	return web.Respond(ctx, w, success, http.StatusOK)
 }
 
 func (pg postGroup) queryByCat(ctx context.Context, w http.ResponseWriter, r *http.Request) error {

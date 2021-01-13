@@ -9,6 +9,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MessageResponse is used to answer user about result of some operations
+type MessageResponse struct {
+	Msg string `json:"message"`
+}
+
 // Respond converts a Go value to JSON and sends it to the client.
 func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statusCode int) error {
 	w.Header().Set("Access-Control-Allow-Origin", "*")

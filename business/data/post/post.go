@@ -24,6 +24,7 @@ var (
 	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
 	ErrCommentNotFound = errors.New("comment not found")
 
+	//ErrCommentNotFound is used when user tries to create post with incorrect type.
 	ErrWrongPostType = errors.New("new post should be of type url or text")
 )
 
