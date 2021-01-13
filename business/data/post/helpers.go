@@ -25,7 +25,7 @@ func upvotePercentage(votes []Vote) int {
 	return int(positive / float32(len(votes)) * 100)
 }
 
-// infoByPostAndClaims creates new Info using postDB and auth.Claims given by user
+// infoByPostAndClaims creates Info using postDB and auth.Claims given by user
 func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 	var info Info
 	if post.Type == "link" {
@@ -72,8 +72,8 @@ func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 	return info
 }
 
-//creates new Info using data got from DB
-func infoByDBdata(post postDB, author Author, votes []Vote, comments []Comment) Info {
+// infoByPostDB creates new Info using data from DB
+func infoByPostDB(post postDB, author Author, votes []Vote, comments []Comment) Info {
 	var info Info
 	if post.Type == "url" {
 		info = InfoLink{
@@ -109,7 +109,7 @@ func infoByDBdata(post postDB, author Author, votes []Vote, comments []Comment) 
 	return info
 }
 
-//obtains Author using its ID in DB
+// getAuthorByID obtains Author using ID from database
 func (p Post) getAuthorByID(ctx context.Context, ID string) (Author, error) {
 	const qAuthor = `SELECT user_id, name FROM users WHERE user_id = $1`
 
@@ -122,7 +122,7 @@ func (p Post) getAuthorByID(ctx context.Context, ID string) (Author, error) {
 	return author, nil
 }
 
-//obtains Author using its Name in DB
+// getAuthorByName obtains Author using name in database
 func (p Post) getAuthorByName(ctx context.Context, name string) (Author, error) {
 	const qAuthor = `SELECT user_id, name FROM users WHERE name = $1`
 
@@ -135,7 +135,7 @@ func (p Post) getAuthorByName(ctx context.Context, name string) (Author, error) 
 	return author[0], nil
 }
 
-//returns slice of Vote for a single post
+// selectVotesByPostID returns slice of Vote for a single post
 func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error) {
 	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
@@ -148,7 +148,7 @@ func (p Post) selectVotesByPostID(ctx context.Context, ID string) ([]Vote, error
 	return votes, nil
 }
 
-//returns score for a single post
+// getPostScore returns score of a single post
 func (p Post) getPostScore(ctx context.Context, ID string) (int, error) {
 	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1 HAVING SUM(vote) is not null`
 
@@ -161,7 +161,7 @@ func (p Post) getPostScore(ctx context.Context, ID string) (int, error) {
 	return score, nil
 }
 
-//return slice of Comment for a single post
+// selectCommentsByPostID return slice of Comment for a single post
 func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment, error) {
 	const qComments = `
 		SELECT 
@@ -200,7 +200,7 @@ func (p Post) selectCommentsByPostID(ctx context.Context, ID string) ([]Comment,
 	return comments, nil
 }
 
-// selectAllPosts return all posts stored in DB
+// selectAllPosts return all posts stored in database
 func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts`
 
@@ -221,7 +221,7 @@ func (p Post) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	return posts, nil
 }
 
-//selectPostsByCategory returns all posts with a given category stored in DB
+// selectPostsByCategory returns all posts with a given category stored in database
 func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
@@ -241,7 +241,7 @@ func (p Post) selectPostsByCategory(ctx context.Context, category string) ([]pos
 	return posts, nil
 }
 
-//selectPostsByUser returns all posts from user stored in DB
+// selectPostsByUser returns all posts from user stored in database
 func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
@@ -261,7 +261,7 @@ func (p Post) selectPostsByUser(ctx context.Context, userID string) ([]postDB, e
 	return posts, nil
 }
 
-//getPostByID obtains post from DB using its ID
+// getPostByID obtains post from database using ID
 func (p Post) getPostByID(ctx context.Context, postID string) (postDB, error) {
 	const q = `	SELECT * FROM posts WHERE post_id = $1`
 
@@ -282,8 +282,8 @@ func (p Post) getPostByID(ctx context.Context, postID string) (postDB, error) {
 	return post, nil
 }
 
-//checkPost shows whether post with given ID exist in DB or not
-//it returns an error if post does not exist or nil if does
+// checkPost shows whether post with given ID exist in database or not.
+// It returns an error if post doesn't exist.
 func (p Post) checkPost(ctx context.Context, postID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM posts WHERE post_id = $1`
 
@@ -300,7 +300,7 @@ func (p Post) checkPost(ctx context.Context, postID string) error {
 	return nil
 }
 
-//insertPost adds one new row to posts DB
+// insertPost adds one new row to posts table
 func (p Post) insertPost(ctx context.Context, post postDB) error {
 	const qPost = `
 	INSERT INTO posts
@@ -320,7 +320,7 @@ func (p Post) insertPost(ctx context.Context, post postDB) error {
 	return nil
 }
 
-//insertVote adds one row to votes DB
+// insertVote adds one row to votes database
 func (p Post) insertVote(ctx context.Context, postID string, userID string, vote int) error {
 	const qVote = `
 	INSERT INTO votes
@@ -359,8 +359,8 @@ func (p Post) deletePost(ctx context.Context, postID string) error {
 	return nil
 }
 
-//checkVote shows whether vote to given post by user exist in DB or not
-//it returns an error if vote does not exist or nil if does
+// checkVote shows whether vote to given post by user exists in database.
+// It returns an error if vote does not exist.
 func (p Post) checkVote(ctx context.Context, postID string, userID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM votes WHERE post_id = $1 AND user_id = $2`
 
@@ -377,6 +377,7 @@ func (p Post) checkVote(ctx context.Context, postID string, userID string) error
 	return nil
 }
 
+// updateVote changes specific vote value
 func (p Post) updateVote(ctx context.Context, postID string, userID string, vote int) error {
 	const qUpdateVote = `UPDATE votes SET vote = $3 WHERE post_id = $1 AND user_id = $2`
 
@@ -388,8 +389,8 @@ func (p Post) updateVote(ctx context.Context, postID string, userID string, vote
 	return nil
 }
 
+// deleteVote deletes vote
 func (p Post) deleteVote(ctx context.Context, postID string, userID string) error {
-
 	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
 
 	p.log.Printf("%s: %s", "post.helpers.deleteVote", database.Log(qDeleteVote, postID, userID))
@@ -400,7 +401,8 @@ func (p Post) deleteVote(ctx context.Context, postID string, userID string) erro
 	return nil
 }
 
-func (p Post) insertComment(
+// createComment creates comment with specified data
+func (p Post) createComment(
 	ctx context.Context, commentID string, postID string, userID string, text string, now time.Time) error {
 	const qComment = `
 	INSERT INTO comments
@@ -408,7 +410,7 @@ func (p Post) insertComment(
 	VALUES
 		($1, $2, $3, $4, $5)`
 
-	p.log.Printf("%s: %s", "post.helpers.insertComment",
+	p.log.Printf("%s: %s", "post.helpers.createComment",
 		database.Log(qComment, commentID, postID, userID, text, now))
 
 	if _, err := p.db.ExecContext(ctx, qComment, commentID, postID, userID, text, now); err != nil {
@@ -417,6 +419,7 @@ func (p Post) insertComment(
 	return nil
 }
 
+// getCommentByID returns comment with ID commentID
 func (p Post) getCommentByID(ctx context.Context, commentID string) (Comment, error) {
 	const qComment = `
 		SELECT name, user_id, cm.date_created, body, comment_id 
@@ -452,6 +455,7 @@ func (p Post) getCommentByID(ctx context.Context, commentID string) (Comment, er
 	return comment, nil
 }
 
+// deleteComment deletes comment.
 func (p Post) deleteComment(ctx context.Context, commentID string) error {
 	const qDeleteComment = `DELETE FROM comments WHERE comment_id = $1`
 

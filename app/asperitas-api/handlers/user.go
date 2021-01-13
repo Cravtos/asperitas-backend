@@ -43,6 +43,7 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 	var tkn struct {
 		Token string `json:"token"`
 	}
+	// todo: consider HS256
 	kid := ug.auth.GetKID()
 	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
 	if err != nil {

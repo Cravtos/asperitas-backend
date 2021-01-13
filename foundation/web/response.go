@@ -77,9 +77,11 @@ func RespondError(ctx context.Context, w http.ResponseWriter, err error) error {
 	return nil
 }
 
+// AllowMethods responds with Access-Control-Allow-Methods header set to methods.
 func AllowMethods(ctx context.Context, w http.ResponseWriter, methods []string) error {
+	// todo: it may be better to get Access-Control-Allow-Headers as an argument
+
 	w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
-	// todo: it may be better to get values as argument
-	w.Header().Set("Access-Control-Allow-Headers", "authorization,content-type")
+	w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
 	return Respond(ctx, w, nil, http.StatusNoContent)
 }

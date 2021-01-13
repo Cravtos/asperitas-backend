@@ -117,7 +117,7 @@ func (p Post) Query(ctx context.Context) ([]Info, error) {
 			return nil, err
 		}
 
-		info = append(info, infoByDBdata(post, author, votes, comments))
+		info = append(info, infoByPostDB(post, author, votes, comments))
 	}
 
 	return info, nil
@@ -149,7 +149,7 @@ func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
 		return nil, err
 	}
 
-	return infoByDBdata(post, author, votes, comments), nil
+	return infoByPostDB(post, author, votes, comments), nil
 }
 
 // QueryByCat finds the post identified by a given Category ready to be send to user.
@@ -176,7 +176,7 @@ func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
 			return nil, err
 		}
 
-		info = append(info, infoByDBdata(post, author, votes, comments))
+		info = append(info, infoByPostDB(post, author, votes, comments))
 	}
 
 	return info, nil
@@ -205,7 +205,7 @@ func (p Post) QueryByUser(ctx context.Context, name string) ([]Info, error) {
 			return nil, err
 		}
 
-		info = append(info, infoByDBdata(post, author, votes, comments))
+		info = append(info, infoByPostDB(post, author, votes, comments))
 	}
 
 	return info, nil
@@ -238,7 +238,7 @@ func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote 
 	return pst, nil
 }
 
-//Unvote erases vote to the post from a single user
+// Unvote erases vote to the post from a single user
 func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (Info, error) {
 	if err := p.checkPost(ctx, postID); err != nil {
 		return nil, err
@@ -263,13 +263,14 @@ func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (In
 	return pst, nil
 }
 
+// CreateComment creates comment
 func (p Post) CreateComment(
 	ctx context.Context, claims auth.Claims, nc NewComment, postID string, now time.Time) (Info, error) {
 	if err := p.checkPost(ctx, postID); err != nil {
 		return nil, err
 	}
 
-	if err := p.insertComment(ctx, uuid.New().String(), postID, claims.User.ID, nc.Text, now); err != nil {
+	if err := p.createComment(ctx, uuid.New().String(), postID, claims.User.ID, nc.Text, now); err != nil {
 		return InfoText{}, err
 	}
 
@@ -281,6 +282,7 @@ func (p Post) CreateComment(
 
 }
 
+// DeleteComment deletes comment
 func (p Post) DeleteComment(ctx context.Context, claims auth.Claims, postID string, commentID string) (Info, error) {
 	if err := p.checkPost(ctx, postID); err != nil {
 		return nil, err
