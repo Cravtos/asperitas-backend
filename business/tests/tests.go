@@ -29,8 +29,6 @@ var (
 	dbImage = "postgres:13-alpine"
 	dbPort  = "5432"
 	dbArgs  = []string{"-e", "POSTGRES_PASSWORD=postgres"}
-	AdminID = "5cf37266-3473-4006-984f-9325122678b7"
-	UserID  = "45b5fbd3-755f-4379-8f07-a58d4a30fa2f"
 )
 
 // NewUnit creates a test database inside a Docker container. It creates the
@@ -86,20 +84,6 @@ func NewUnit(t *testing.T) (*log.Logger, *sqlx.DB, func()) {
 	log := log.New(os.Stdout, "TEST : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
 	return log, db, teardown
-}
-
-// StringPointer is a helper to get a *string from a string. It is in the tests
-// package because we normally don't want to deal with pointers to basic types
-// but it's useful in some tests.
-func StringPointer(s string) *string {
-	return &s
-}
-
-// IntPointer is a helper to get a *int from a int. It is in the tests package
-// because we normally don't want to deal with pointers to basic types but it's
-// useful in some tests.
-func IntPointer(i int) *int {
-	return &i
 }
 
 // Test owns state for running and shutting down tests.
@@ -162,7 +146,7 @@ func (test *Test) Token(email, pass string) string {
 	test.t.Log("Generating token for test ...")
 
 	u := user.New(test.Log, test.DB)
-	claims, err := u.Authenticate(context.Background(), test.TraceID, time.Now(), email, pass)
+	claims, err := u.Authenticate(context.Background(), email, pass, time.Now())
 	if err != nil {
 		test.t.Fatal(err)
 	}

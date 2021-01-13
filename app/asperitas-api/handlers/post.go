@@ -59,7 +59,7 @@ func (pg postGroup) create(ctx context.Context, w http.ResponseWriter, r *http.R
 	if err != nil {
 		switch err {
 		case post.ErrWrongPostType:
-			web.NewRequestError(err, http.StatusBadRequest)
+			return web.NewRequestError(err, http.StatusBadRequest)
 		default:
 			return errors.Wrapf(err, "creating new post: %+v", np)
 		}

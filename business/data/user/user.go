@@ -65,7 +65,7 @@ func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, erro
 	VALUES
 		($1, $2, $3, $4)`
 
-	u.log.Printf("%s: %s: %s", "user.Create",
+	u.log.Printf("%s: %s", "user.Create",
 		database.Log(q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated),
 	)
 
@@ -94,7 +94,7 @@ func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) err
 	WHERE
 		user_id = $1`
 
-	u.log.Printf("%s: %s: %s", "user.Delete",
+	u.log.Printf("%s: %s", "user.Delete",
 		database.Log(q, userID),
 	)
 
@@ -151,7 +151,7 @@ func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) 
 	WHERE 
 		user_id = $1`
 
-	u.log.Printf("%s: %s: %s", "user.QueryByID",
+	u.log.Printf("%s: %s", "user.QueryByID",
 		database.Log(q, userID),
 	)
 
@@ -177,7 +177,7 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 	WHERE
 		name = $1`
 
-	u.log.Printf("%s: %s: %s", "user.QueryByName",
+	u.log.Printf("%s: %s", "user.QueryByName",
 		database.Log(q, name),
 	)
 
@@ -210,7 +210,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 	WHERE
 		name = $1`
 
-	u.log.Printf("%s: %s: %s", "user.Authenticate",
+	u.log.Printf("%s: %s", "user.Authenticate",
 		database.Log(q, name),
 	)
 
@@ -241,7 +241,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 		},
 		User: auth.User{
 			Username: usr.Name,
-			ID: usr.ID,
+			ID:       usr.ID,
 		},
 	}
 
