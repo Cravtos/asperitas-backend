@@ -44,8 +44,6 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-
-	// todo: find reason why link posts are not created
 	post := postDB{
 		ID:          uuid.New().String(),
 		Score:       0,

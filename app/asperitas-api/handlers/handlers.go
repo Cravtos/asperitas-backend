@@ -62,7 +62,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 
 	app.Handle(http.MethodOptions, "/api/register", cog.allow("POST"))
 	app.Handle(http.MethodOptions, "/api/login", cog.allow("POST"))
-	app.Handle(http.MethodOptions, "/api/posts", cog.allow("POST")) // todo: smhw it redirects to /api/posts/. need fix
+	app.Handle(http.MethodOptions, "/api/posts", cog.allow("POST"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id", cog.allow("POST", "DELETE"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/:comment_id", cog.allow("DELETE"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/upvote", cog.allow("GET"))
