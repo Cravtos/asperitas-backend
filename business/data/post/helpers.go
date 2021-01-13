@@ -10,6 +10,10 @@ import (
 )
 
 func upvotePercentage(votes []Vote) int {
+	if len(votes) == 0 {
+		return 0
+	}
+
 	var positive float32
 
 	for _, vote := range votes {
@@ -21,10 +25,10 @@ func upvotePercentage(votes []Vote) int {
 	return int(positive / float32(len(votes)) * 100)
 }
 
-//creates new Info using postDB and auth.Claims given by user
+// infoByPostAndClaims creates new Info using postDB and auth.Claims given by user
 func infoByPostAndClaims(post postDB, claims auth.Claims) Info {
 	var info Info
-	if post.Type == "url" {
+	if post.Type == "link" {
 		info = InfoLink{
 			Type:        "link",
 			ID:          post.ID,
@@ -305,7 +309,7 @@ func (p Post) insertPost(ctx context.Context, post postDB) error {
 		($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	p.log.Printf("%s: %s", "post.helpers.insertPost",
-		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Payload, post.Category,
+		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Category, post.Payload,
 			post.DateCreated, post.UserID),
 	)
 

@@ -44,7 +44,7 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 // Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
 func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
 
-	//todo find reason why link posts are not created
+	// todo: find reason why link posts are not created
 	post := postDB{
 		ID:          uuid.New().String(),
 		Score:       0,
@@ -56,19 +56,19 @@ func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now ti
 		DateCreated: now,
 		UserID:      claims.User.ID,
 	}
-	if post.Type != "url" && post.Type != "text" {
+	if post.Type != "link" && post.Type != "text" {
 		return nil, ErrWrongPostType
 	}
-	if post.Type == "url" {
+	if post.Type == "link" {
 		post.Payload = np.URL
 	}
 
 	if err := p.insertPost(ctx, post); err != nil {
-		return InfoText{}, err
+		return nil, err
 	}
 
 	if err := p.insertVote(ctx, post.ID, post.UserID, 1); err != nil {
-		return InfoText{}, err
+		return nil, err
 	}
 
 	info := infoByPostAndClaims(post, claims)
