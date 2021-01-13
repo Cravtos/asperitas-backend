@@ -6,16 +6,10 @@ networks:
 
 services:
 
-  zipkin:
-    container_name: zipkin
-    networks:
-      - shared-network
-    image: openzipkin/zipkin:2.23
-    ports:
-      - 9411:9411
-
   db:
     container_name: asperitas_db
+    environment:
+      - POSTGRES_PASSWORD=postgres
     networks:
       - shared-network
     image: postgres:13-alpine
@@ -28,19 +22,7 @@ services:
       - shared-network
     image: asperitas-api-amd64:1.0
     ports:
-      - 3000:3000 # CRUD API
+      - 8080:8080 # CRUD API
       - 4000:4000 # DEBUG API
     depends_on:
-      - zipkin
       - db
-
-  metrics:
-    container_name: metrics
-    networks:
-      - shared-network
-    image: metrics-amd64:1.0
-    ports:
-      - 3001:3001 # EXPVAR API
-      - 4001:4001 # DEBUG API
-    depends_on:
-      - asperitas-api

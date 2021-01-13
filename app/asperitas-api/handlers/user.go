@@ -6,7 +6,6 @@ import (
 	"github.com/cravtos/asperitas-backend/business/data/user"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 	"net/http"
 )
 
@@ -16,12 +15,9 @@ type userGroup struct {
 }
 
 func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.userGroup.register")
-	defer span.End()
-
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
-		return web.NewShutdownError("web value missing from context")
+		return errors.New("web values missing from context")
 	}
 
 	var nu user.NewUser
@@ -29,12 +25,12 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	_, err := ug.user.Create(ctx, v.TraceID, nu, v.Now)
+	_, err := ug.user.Create(ctx, nu, v.Now)
 	if err != nil {
 		return errors.Wrapf(err, "unable to create user with name %s", nu.Name)
 	}
 
-	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, nu.Name, nu.Password)
+	claims, err := ug.user.Authenticate(ctx, nu.Name, nu.Password, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:
@@ -47,6 +43,7 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 	var tkn struct {
 		Token string `json:"token"`
 	}
+	// todo: consider HS256
 	kid := ug.auth.GetKID()
 	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
 	if err != nil {
@@ -57,30 +54,27 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.userGroup.login")
-	defer span.End()
-
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
-		return web.NewShutdownError("web value missing from context")
+		return errors.New("web values missing from context")
 	}
 
 	u := struct {
-		Name string
-		Password string
+		Username string `json:"username"`
+		Password string `json:"password"`
 	}{}
 
 	if err := web.Decode(r, &u); err != nil {
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	claims, err := ug.user.Authenticate(ctx, v.TraceID, v.Now, u.Name, u.Password)
+	claims, err := ug.user.Authenticate(ctx, u.Username, u.Password, v.Now)
 	if err != nil {
 		switch err {
 		case user.ErrAuthenticationFailure:
 			return web.NewRequestError(err, http.StatusForbidden)
 		default:
-			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Name)
+			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Username)
 		}
 	}
 

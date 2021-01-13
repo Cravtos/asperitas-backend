@@ -4,16 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
 )
+
+// MessageResponse is used to answer user about result of some operations
+type MessageResponse struct {
+	Msg string `json:"message"`
+}
 
 // Respond converts a Go value to JSON and sends it to the client.
 func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statusCode int) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "foundation.web.respond")
-	defer span.End()
-
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	// Set the status code for the request logger middleware.
 	// If the context is missing this value, request the service
 	// to be shutdown gracefully.
@@ -22,7 +25,6 @@ func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statu
 		return NewShutdownError("web value missing from context")
 	}
 	v.StatusCode = statusCode
-
 	// If there is nothing to marshal then set status code and return.
 	if statusCode == http.StatusNoContent {
 		w.WriteHeader(statusCode)
@@ -37,7 +39,6 @@ func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statu
 
 	// Set the content type and headers once we know marshaling has succeeded.
 	w.Header().Set("Content-Type", "application/json")
-
 	// Write the status code to the response.
 	w.WriteHeader(statusCode)
 
@@ -74,4 +75,13 @@ func RespondError(ctx context.Context, w http.ResponseWriter, err error) error {
 	}
 
 	return nil
+}
+
+// AllowMethods responds with Access-Control-Allow-Methods header set to methods.
+func AllowMethods(ctx context.Context, w http.ResponseWriter, methods []string) error {
+	// todo: it may be better to get Access-Control-Allow-Headers as an argument
+
+	w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
+	w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
+	return Respond(ctx, w, nil, http.StatusNoContent)
 }

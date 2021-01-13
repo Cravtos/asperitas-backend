@@ -3,27 +3,29 @@ package post
 
 import (
 	"context"
-	"database/sql"
-	"log"
-	"time"
-
 	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel/trace"
+	"log"
+	"time"
 )
 
 var (
 	// ErrInvalidID occurs when an ID is not in a valid form.
-	ErrInvalidID = errors.New("ID is not in its proper form")
+	ErrInvalidID = errors.New("invalid post id")
 
 	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 
-	// ErrNotFound is used when a specific Post is requested but does not exist.
-	ErrNotFound = errors.New("not found")
+	// ErrPostNotFound is used when a specific Post is requested but does not exist.
+	ErrPostNotFound = errors.New("post not found")
+
+	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
+	ErrCommentNotFound = errors.New("comment not found")
+
+	//ErrCommentNotFound is used when user tries to create post with incorrect type.
+	ErrWrongPostType = errors.New("new post should be of type url or text")
 )
 
 // Post manages the set of API's for product access.
@@ -40,183 +42,267 @@ func New(log *log.Logger, db *sqlx.DB) Post {
 	}
 }
 
-// Create adds a Post to the database. It returns the created Post with
-// fields like ID and DateCreated populated.
-func (p Post) Create(ctx context.Context, traceID string, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.create")
-	defer span.End()
-
-	post := Info{
-		ID:         uuid.New().String(),
-		//Author:     Author{Username: claims.User.Username, ID: claims.User.ID},
-		Type:		np.Type,
-		Title:		np.Title,
-		URL:		np.URL,
-		Category:	np.Category,
-		Text:		np.Text,
-		// Votes:		[]Votes{},
-		// Comments:	[]Comment{},
-		DateCreated: now.UTC(),
+// Create adds a post to the database. It returns the created post with fields like ID and DateCreated populated.
+func (p Post) Create(ctx context.Context, claims auth.Claims, np NewPost, now time.Time) (Info, error) {
+	post := postDB{
+		ID:          uuid.New().String(),
+		Score:       0,
+		Views:       0,
+		Title:       np.Title,
+		Type:        np.Type,
+		Category:    np.Category,
+		Payload:     np.Text,
+		DateCreated: now,
+		UserID:      claims.User.ID,
+	}
+	if post.Type != "link" && post.Type != "text" {
+		return nil, ErrWrongPostType
+	}
+	if post.Type == "link" {
+		post.Payload = np.URL
 	}
 
-	//const q = `
-	//INSERT INTO posts
-	//	(score, views, type, title, url, author, category, votes, comments, date_created, text, post_id)
-	//VALUES
-	//	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-	//
-	//p.log.Printf("%s: %s: %s", traceID, "post.Create",
-	//	database.Log(q, post.Score, post.Views, post.Type, post.Title, post.URL, post.Author, post.Category,
-	//		post.Votes, post.Comments, post.DateCreated, post.Text, post.ID),
-	//)
-	//
-	//if _, err := p.db.ExecContext(ctx, q, post.Score, post.Views, post.Type, post.Title, post.URL, post.Author,
-	//	post.Category, post.Votes, post.Comments, post.DateCreated, post.Text, post.ID); err != nil {
-	//	return Info{}, errors.Wrap(err, "inserting product")
-	//}
-
-	const q = `
-	INSERT INTO posts
-		(post_id, score, views, type, title, url, category, text, date_created)
-	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-
-	p.log.Printf("%s: %s: %s", traceID, "post.Create",
-		database.Log(q, post.ID, post.Score, post.Views, post.Type, post.Title, post.URL, post.Category,
-			post.Text, post.DateCreated),
-	)
-
-	if _, err := p.db.ExecContext(ctx, q, post.ID, post.Score, post.Views, post.Type, post.Title, post.URL,
-		post.Category, post.Text, post.DateCreated); err != nil {
-		return Info{}, errors.Wrap(err, "inserting product")
+	if err := p.insertPost(ctx, post); err != nil {
+		return nil, err
 	}
 
-	return post, nil
+	if err := p.insertVote(ctx, post.ID, post.UserID, 1); err != nil {
+		return nil, err
+	}
+
+	info := infoByPostAndClaims(post, claims)
+	return info, nil
 }
 
 // Delete removes the product identified by a given ID.
-func (p Post) Delete(ctx context.Context, traceID string, claims auth.Claims, postID string) error {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.delete")
-	defer span.End()
+func (p Post) Delete(ctx context.Context, claims auth.Claims, postID string) error {
 
 	if _, err := uuid.Parse(postID); err != nil {
 		return ErrInvalidID
 	}
 
-
-	//// If you are not an admin. // Todo: check if auth.Claims.Subjects == post.Author.ID
-	//if !claims.Authorized(auth.RoleAdmin) {
-	//	return ErrForbidden
-	//}
-
-	const q = `
-	DELETE FROM
-		posts
-	WHERE
-		post_id = $1`
-
-	p.log.Printf("%s: %s: %s", traceID, "post.Delete",
-		database.Log(q, postID),
-	)
-
-	if _, err := p.db.ExecContext(ctx, q, postID); err != nil {
-		return errors.Wrapf(err, "deleting post %s", postID)
+	post, err := p.getPostByID(ctx, postID)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	if claims.User.ID != post.UserID {
+		return ErrForbidden
+	}
+
+	return p.deletePost(ctx, postID)
 }
 
-// Query gets all Posts from the database.
-func (p Post) Query(ctx context.Context, traceID string) ([]Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.query")
-	defer span.End()
-
-	const q = `SELECT * FROM posts`
-
-	p.log.Printf("%s: %s: %s", traceID, "post.Query",
-		database.Log(q),
-	)
-
-	var posts []Info
-	if err := p.db.SelectContext(ctx, &posts, q); err != nil {
-		return nil, errors.Wrap(err, "selecting posts")
+// Query gets all Posts from the database ready to be send to user.
+func (p Post) Query(ctx context.Context) ([]Info, error) {
+	posts, err := p.selectAllPosts(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return posts, nil
-}
-
-// QueryByID finds the post identified by a given ID.
-func (p Post) QueryByID(ctx context.Context, traceID string, postID string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyid")
-	defer span.End()
-
-	if _, err := uuid.Parse(postID); err != nil {
-		return Info{}, ErrInvalidID
-	}
-
-	const q = `
-	SELECT * FROM
-		posts
-	WHERE
-		post_id = $1`
-
-	p.log.Printf("%s: %s: %s", traceID, "product.QueryByID",
-		database.Log(q, postID),
-	)
-
-	var post Info
-	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
-		return Info{}, errors.Wrap(err, "selecting post by ID")
-	}
-
-	return post, nil
-}
-
-// QueryByCat finds the post identified by a given Category.
-func (p Post) QueryByCat(ctx context.Context, traceID string, category string) (Info, error) {
-	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybycat")
-	defer span.End()
-
-	const q = `
-	SELECT * FROM
-		posts
-	WHERE
-		category = $1`
-
-	p.log.Printf("%s: %s: %s", traceID, "product.QueryByCat",
-		database.Log(q, category),
-	)
-
-	var post Info
-	if err := p.db.GetContext(ctx, &post, q, category); err != nil {
-		if err == sql.ErrNoRows { // Todo: check if error is correct
-			return Info{}, ErrNotFound
+	var info []Info
+	for _, post := range posts {
+		author, err := p.getAuthorByID(ctx, post.UserID)
+		if err != nil {
+			return nil, err
 		}
-		return Info{}, errors.Wrap(err, "selecting posts by category")
+
+		votes, err := p.selectVotesByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		comments, err := p.selectCommentsByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		info = append(info, infoByPostDB(post, author, votes, comments))
 	}
 
-	return post, nil
+	return info, nil
 }
 
-// // QueryByUser finds the post identified by a given user. // Todo: think about how to get post by user from DB
-//func (p Post) QueryByUser(ctx context.Context, traceID string, user string) (Info, error) {
-//	ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.post.querybyuser")
-//	defer span.End()
-//
-//	const q = `
-//	SELECT * FROM
-//		posts
-//	WHERE
-//		post_id = $1`
-//
-//	p.log.Printf("%s: %s: %s", traceID, "product.QueryByID",
-//		database.Log(q, postID),
-//	)
-//
-//	var prd Info
-//	if err := p.db.GetContext(ctx, &prd, q, postID); err != nil {
-//		return Info{}, errors.Wrap(err, "selecting single product")
-//	}
-//
-//	return prd, nil
-//}
+// QueryByID finds the post identified by a given ID ready to be send to user.
+func (p Post) QueryByID(ctx context.Context, postID string) (Info, error) {
+	if _, err := uuid.Parse(postID); err != nil {
+		return InfoText{}, ErrInvalidID
+	}
+
+	post, err := p.getPostByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	author, err := p.getAuthorByID(ctx, post.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	votes, err := p.selectVotesByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	comments, err := p.selectCommentsByPostID(ctx, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return infoByPostDB(post, author, votes, comments), nil
+}
+
+// QueryByCat finds the post identified by a given Category ready to be send to user.
+func (p Post) QueryByCat(ctx context.Context, category string) ([]Info, error) {
+	posts, err := p.selectPostsByCategory(ctx, category)
+	if err != nil {
+		return nil, err
+	}
+
+	var info []Info
+	for _, post := range posts {
+		author, err := p.getAuthorByID(ctx, post.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		votes, err := p.selectVotesByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		comments, err := p.selectCommentsByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		info = append(info, infoByPostDB(post, author, votes, comments))
+	}
+
+	return info, nil
+}
+
+// QueryByUser finds the posts identified by a given user ID.
+func (p Post) QueryByUser(ctx context.Context, name string) ([]Info, error) {
+	author, err := p.getAuthorByName(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	posts, err := p.selectPostsByUser(ctx, author.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	var info []Info
+	for _, post := range posts {
+		votes, err := p.selectVotesByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		comments, err := p.selectCommentsByPostID(ctx, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		info = append(info, infoByPostDB(post, author, votes, comments))
+	}
+
+	return info, nil
+}
+
+// Vote adds vote to the post with given postID.
+func (p Post) Vote(ctx context.Context, claims auth.Claims, postID string, vote int) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
+		if err != ErrPostNotFound {
+			return nil, err
+		}
+		if err := p.insertVote(ctx, postID, claims.User.ID, vote); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := p.updateVote(ctx, postID, claims.User.ID, vote); err != nil {
+			return nil, err
+		}
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
+}
+
+// Unvote erases vote to the post from a single user
+func (p Post) Unvote(ctx context.Context, claims auth.Claims, postID string) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	if err := p.checkVote(ctx, postID, claims.User.ID); err != nil {
+		if err != ErrPostNotFound {
+			return nil, err
+		} else {
+			return nil, nil
+		}
+	}
+	if err := p.deleteVote(ctx, postID, claims.User.ID); err != nil {
+		return nil, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
+}
+
+// CreateComment creates comment
+func (p Post) CreateComment(
+	ctx context.Context, claims auth.Claims, nc NewComment, postID string, now time.Time) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	if err := p.createComment(ctx, uuid.New().String(), postID, claims.User.ID, nc.Text, now); err != nil {
+		return InfoText{}, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after creating comment")
+	}
+	return pst, nil
+
+}
+
+// DeleteComment deletes comment
+func (p Post) DeleteComment(ctx context.Context, claims auth.Claims, postID string, commentID string) (Info, error) {
+	if err := p.checkPost(ctx, postID); err != nil {
+		return nil, err
+	}
+	comment, err := p.getCommentByID(ctx, commentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if claims.User.ID != comment.Author.ID {
+		return nil, ErrForbidden
+	}
+	if err := p.deleteComment(ctx, commentID); err != nil {
+		return nil, err
+	}
+
+	pst, err := p.QueryByID(ctx, postID)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting post after voting")
+	}
+
+	return pst, nil
+}

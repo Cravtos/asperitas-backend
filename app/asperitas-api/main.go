@@ -3,36 +3,23 @@ package main
 import (
 	"context"
 	"crypto/rsa"
-	"expvar" // Register the expvar handlers
 	"fmt"
-	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"io/ioutil"
 	"log"
 	"net/http"
-	_ "net/http/pprof" // Register the pprof handlers
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/ardanlabs/conf"
-	"github.com/cravtos/asperitas-backend/app/asperitas-api/handlers"
-	//"github.com/cravtos/asperitas-backend/business/auth"
-	//"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/trace/zipkin"
-	"go.opentelemetry.io/otel/sdk/trace"
-)
 
-/*
-Need to figure out timeouts for http service.
-You might want to reset your DB_HOST env var during test tear down.
-Service should start even without a DB running yet.
-symbols in profiles: https://github.com/golang/go/issues/23376 / https://github.com/google/pprof/pull/366
-*/
+	"github.com/cravtos/asperitas-backend/app/asperitas-api/handlers"
+	"github.com/cravtos/asperitas-backend/business/auth"
+	"github.com/cravtos/asperitas-backend/foundation/database"
+)
 
 // build is the git version of this program. It is set using build flags in the makefile.
 var build = "develop"
@@ -54,7 +41,7 @@ func run(log *log.Logger) error {
 	var cfg struct {
 		conf.Version
 		Web struct {
-			APIHost         string        `conf:"default:0.0.0.0:3000"`
+			APIHost         string        `conf:"default:0.0.0.0:8080"`
 			DebugHost       string        `conf:"default:0.0.0.0:4000"`
 			ReadTimeout     time.Duration `conf:"default:5s"`
 			WriteTimeout    time.Duration `conf:"default:5s"`
@@ -68,14 +55,9 @@ func run(log *log.Logger) error {
 		DB struct {
 			User       string `conf:"default:postgres"`
 			Password   string `conf:"default:postgres,noprint"`
-			Host       string `conf:"default:db"`
+			Host       string `conf:"default:0.0.0.0"`
 			Name       string `conf:"default:postgres"`
 			DisableTLS bool   `conf:"default:true"`
-		}
-		Zipkin struct {
-			ReporterURI string  `conf:"default:http://zipkin:9411/api/v2/spans"`
-			ServiceName string  `conf:"default:asperitas-api"`
-			Probability float64 `conf:"default:0.05"`
 		}
 	}
 	cfg.Version.SVN = build
@@ -104,8 +86,7 @@ func run(log *log.Logger) error {
 	// =========================================================================
 	// App Starting
 
-	// Print the build version for our logs. Also expose it under /debug/vars.
-	expvar.NewString("build").Set(build)
+	// Print the build version for our logs.
 	log.Printf("main : Started : Application initializing : version %q", build)
 	defer log.Println("main: Completed")
 
@@ -162,35 +143,6 @@ func run(log *log.Logger) error {
 		log.Printf("main: Database Stopping : %s", cfg.DB.Host)
 		db.Close()
 	}()
-
-	// =========================================================================
-	// Start Tracing Support
-
-	// WARNING: The current Init settings are using defaults which may not be
-	// compatible with your project. Please review the documentation for
-	// opentelemetry.
-
-	log.Println("main: Initializing OT/Zipkin tracing support")
-
-	exporter, err := zipkin.NewRawExporter(
-		cfg.Zipkin.ReporterURI,
-		cfg.Zipkin.ServiceName,
-		zipkin.WithLogger(log),
-	)
-	if err != nil {
-		return errors.Wrap(err, "creating new exporter")
-	}
-
-	tp := trace.NewTracerProvider(
-		trace.WithConfig(trace.Config{DefaultSampler: trace.TraceIDRatioBased(cfg.Zipkin.Probability)}),
-		trace.WithBatcher(exporter,
-			trace.WithMaxExportBatchSize(trace.DefaultMaxExportBatchSize),
-			trace.WithBatchTimeout(trace.DefaultBatchTimeout),
-			trace.WithMaxExportBatchSize(trace.DefaultMaxExportBatchSize),
-		),
-	)
-
-	otel.SetTracerProvider(tp)
 
 	// =========================================================================
 	// Start Debug Service

@@ -24,7 +24,7 @@ func Migrate(db *sqlx.DB) error {
 // consider a combined approach using a tool like packr or go-bindata.
 var migrations = []darwin.Migration{
 	{
-		Version:     1.1,
+		Version:     1.0,
 		Description: "Create table users",
 		Script: `
 CREATE TABLE users (
@@ -37,30 +37,45 @@ CREATE TABLE users (
 );`,
 	},
 	{
-		Version:     1.2,
+		Version:     1.1,
 		Description: "Create table posts",
 		Script: `
 CREATE TABLE posts (
 	post_id          UUID,
-	score            INT,
 	views            INT,
 	type             TEXT,
 	title            TEXT,
-	url              TEXT,
+	payload          TEXT,
 	category         TEXT,
-	text             TEXT,
 	date_created     TIMESTAMP,
+	
+	user_id			 UUID references users(user_id),
 
 	PRIMARY KEY (post_id)
 );`,
 	},
 	{
-		Version:     1.3,
-		Description: "add authors in table posts",
+		Version:     1.2,
+		Description: "Create table votes",
 		Script: `
-	alter table posts add column author_id UUID;
-	alter table posts add constraint posts_author_fk
-	FOREIGN KEY(author_id)	REFERENCES users(user_id);
-`,
+CREATE TABLE votes (
+	post_id          UUID references posts(post_id),
+	user_id          UUID references users(user_id),
+	vote             INT
+);`,
+	},
+	{
+		Version: 1.3,
+		Script: `
+CREATE TABLE comments (
+	comment_id       UUID,
+	post_id          UUID references posts(post_id),
+	user_id          UUID references users(user_id),
+	body             TEXT,
+	date_created     TIMESTAMP,
+
+	PRIMARY KEY (comment_id)
+);`,
+		Description: "Create table comments",
 	},
 }

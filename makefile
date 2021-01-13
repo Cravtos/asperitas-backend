@@ -21,20 +21,12 @@ export PROJECT = asperitas-backend
 # ==============================================================================
 # Building containers
 
-all: asperitas metrics
+all: asperitas
 
 asperitas:
 	docker build \
 		-f zarf/docker/dockerfile.asperitas-api \
 		-t asperitas-api-amd64:1.0 \
-		--build-arg VCS_REF=`git rev-parse HEAD` \
-		--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
-		.
-
-metrics:
-	docker build \
-		-f zarf/docker/dockerfile.metrics \
-		-t metrics-amd64:1.0 \
 		--build-arg VCS_REF=`git rev-parse HEAD` \
 		--build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` \
 		.

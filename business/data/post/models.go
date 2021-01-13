@@ -1,21 +1,75 @@
 package post
 
-import "time"
+import (
+	"time"
+)
 
+// postDB represents an individual post in database. (with additional field "score" counted using votes table)
+type postDB struct {
+	ID          string    `db:"post_id"`
+	Score       int       `db:"score"`
+	Views       int       `db:"views"`
+	Type        string    `db:"type"`
+	Title       string    `db:"title"`
+	Category    string    `db:"category"`
+	Payload     string    `db:"payload"`
+	DateCreated time.Time `db:"date_created"`
+	UserID      string    `db:"user_id"`
+}
 
 // Author represents info about author
 type Author struct {
-	Username string `json:"username"`
-	ID       string `json:"id"`
+	Username string `db:"name" json:"username"`
+	ID       string `db:"user_id" json:"id"`
 }
 
-// Votes represents info about user votes.
-type Votes struct {
-	User string `json:"user"`
-	Vote int    `json:"vote"`
+// Vote represents info about user vote.
+type Vote struct {
+	User string `db:"user_id" json:"user"`
+	Vote int    `db:"vote" json:"vote"`
 }
 
-// Comment represents info about comments for the post.
+// Info generalizes text and link posts
+type Info interface {
+	Info()
+}
+
+// InfoText represents an individual text post which is sent to user.
+type InfoText struct {
+	Type             string    `json:"type"`
+	ID               string    `json:"id"`
+	Score            int       `json:"score"`
+	Views            int       `json:"views"`
+	Title            string    `json:"title"`
+	Category         string    `json:"category"`
+	Payload          string    `json:"text"`
+	DateCreated      time.Time `json:"created"`
+	Author           Author    `json:"author"`
+	Votes            []Vote    `json:"votes"`
+	Comments         []Comment `json:"comments"`
+	UpvotePercentage int       `json:"upvotePercentage"`
+}
+
+// InfoLink represents an individual link post which is sent to user.
+type InfoLink struct {
+	Type             string    `json:"type"`
+	ID               string    `json:"id"`
+	Score            int       `json:"score"`
+	Views            int       `json:"views"`
+	Title            string    `json:"title"`
+	Payload          string    `json:"url"`
+	Category         string    `json:"category"`
+	DateCreated      time.Time `json:"created"`
+	Author           Author    `json:"author"`
+	Votes            []Vote    `json:"votes"`
+	Comments         []Comment `json:"comments"`
+	UpvotePercentage int       `json:"upvotePercentage"`
+}
+
+func (it InfoText) Info() {}
+func (il InfoLink) Info() {}
+
+// Comment represents info about comments for the post prepared to be sent to user.
 type Comment struct {
 	DateCreated time.Time `json:"created"`
 	Author      Author    `json:"author"`
@@ -23,28 +77,16 @@ type Comment struct {
 	ID          string    `json:"id"`
 }
 
-// Info represents an individual post.
-type Info struct {
-	Score            int       `db:"score" json:"score"`
-	Views            int       `db:"views" json:"views"`
-	Type             string    `db:"type" json:"type" default:"link"`
-	Title            string    `db:"title" json:"title"`
-	URL              string    `db:"url" json:"url"`
-	//Author           Author    `db:"author" json:"author"`
-	Category         string    `db:"category" json:"category"`
-	Votes            []Votes   `db:"votes" json:"votes"`
-	Comments         []Comment `db:"comments" json:"comments"`
-	DateCreated      time.Time `db:"date_created" json:"created"`
-	UpvotePercentage int       `json:"upvotePercentage"`
-	Text             string    `db:"text" json:"text"`
-	ID               string    `db:"post_id" json:"id"`
-}
-
 // NewPost is what we require from users when adding a Post.
 type NewPost struct {
-	Type             string    `db:"type" json:"type" default:"link"`
-	Title            string    `db:"title" json:"title" validate:"required"`
-	URL              string    `db:"url" json:"url" validate:"required"`
-	Category         string    `db:"category" json:"category" validate:"required"`
-	Text             string    `db:"text" json:"text"`
+	Type     string `json:"type" default:"link"`
+	Title    string `json:"title" validate:"required"`
+	Category string `json:"category" validate:"required"`
+	Text     string `json:"text"`
+	URL      string `json:"url"`
+}
+
+// NewComment is what we require from users when adding a Comment.
+type NewComment struct {
+	Text string `json:"comment" validate:"required"`
 }
