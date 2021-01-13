@@ -46,6 +46,7 @@ type App struct {
 // NewApp creates an App value that handle a set of routes for the application.
 func NewApp(shutdown chan os.Signal, mw ...Middleware) *App {
 	mux := httptreemux.NewContextMux()
+	mux.RedirectTrailingSlash = false
 
 	return &App{
 		mux:      mux,
