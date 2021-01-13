@@ -43,7 +43,6 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 		post: post.New(log, db),
 	}
 
-	app.Handle(http.MethodGet, "/api/posts/", pg.query)
 	app.Handle(http.MethodGet, "/api/posts/:category", pg.queryByCat)
 	app.Handle(http.MethodGet, "/api/post/:post_id", pg.queryByID)
 	app.Handle(http.MethodGet, "/api/user/:user", pg.queryByUser)
@@ -69,5 +68,6 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.Handle(http.MethodOptions, "/api/post/:post_id/downvote", cog.allow("GET"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/unvote", cog.allow("GET"))
 
+	app.Handle(http.MethodGet, "/api/posts", pg.query)
 	return app
 }
