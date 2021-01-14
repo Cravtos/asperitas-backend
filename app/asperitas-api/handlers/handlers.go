@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"github.com/cravtos/asperitas-backend/business/data/gql"
 	"log"
 	"net/http"
 	"os"
@@ -68,6 +69,15 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.Handle(http.MethodOptions, "/api/post/:post_id/upvote", cog.allow("GET"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/downvote", cog.allow("GET"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/unvote", cog.allow("GET"))
+
+	//todo change source of Schema
+	gqlg := GraphQLGroup{
+		log:    log,
+		db:     db,
+		schema: gql.Schema,
+	}
+
+	app.HandleGraphQL(http.MethodPost, "/api/graphql", gqlg.handle)
 
 	return app
 }
