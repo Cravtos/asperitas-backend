@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+//todo think about names for everything
+//todo take common helpers out of gql and post
+
 // ctxKey represents the type of value for the context key.
 type ctxKey int
 

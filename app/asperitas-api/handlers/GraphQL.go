@@ -9,6 +9,8 @@ import (
 	"net/http"
 )
 
+//todo think about names for everything
+
 type GraphQLGroup struct {
 	A      gql2.Access
 	schema graphql.Schema
