@@ -25,6 +25,10 @@ var queryType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    postType,
 			Resolve: resolverAnyPost,
 		},
+		"allPosts": &graphql.Field{
+			Type:    graphql.NewList(postType),
+			Resolve: resolverAllPost,
+		},
 	},
 })
 

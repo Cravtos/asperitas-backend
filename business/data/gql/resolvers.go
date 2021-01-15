@@ -28,3 +28,15 @@ func resolverAnyPost(p graphql.ResolveParams) (interface{}, error) {
 	}
 	return posts[0], nil
 }
+
+func resolverAllPost(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(Key).(Access)
+	if !ok {
+		return nil, errors.New("claims missing from context")
+	}
+	posts, err := a.selectAllPosts(p.Context)
+	if err != nil {
+		return nil, err
+	}
+	return posts, nil
+}
