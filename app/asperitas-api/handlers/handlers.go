@@ -72,8 +72,7 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 
 	//todo change source of Schema
 	gqlg := GraphQLGroup{
-		log:    log,
-		db:     db,
+		A:      gql.NewAccess(log, db),
 		schema: gql.Schema,
 	}
 

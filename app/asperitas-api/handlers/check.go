@@ -23,7 +23,7 @@ func (cg checkGroup) readiness(ctx context.Context, w http.ResponseWriter, r *ht
 	status := "ok"
 	statusCode := http.StatusOK
 	if err := database.StatusCheck(ctx, cg.db); err != nil {
-		status = "db not ready"
+		status = "DB not ready"
 		statusCode = http.StatusInternalServerError
 	}
 
@@ -48,13 +48,13 @@ func (cg checkGroup) liveness(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	info := struct {
-		Status    string `json:"status,omitempty"`
-		Build     string `json:"build,omitempty"`
-		Host      string `json:"host,omitempty"`
+		Status string `json:"status,omitempty"`
+		Build  string `json:"build,omitempty"`
+		Host   string `json:"host,omitempty"`
 	}{
-		Status:    "up",
-		Build:     cg.build,
-		Host:      host,
+		Status: "up",
+		Build:  cg.build,
+		Host:   host,
 	}
 
 	return web.Respond(ctx, w, info, http.StatusOK)
