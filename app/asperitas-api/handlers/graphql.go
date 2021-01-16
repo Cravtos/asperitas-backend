@@ -2,25 +2,23 @@ package handlers
 
 import (
 	"context"
-	gql2 "github.com/cravtos/asperitas-backend/business/data/gql"
+	"github.com/cravtos/asperitas-backend/business/data/postgql"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/cravtos/asperitas-backend/foundation/web/gql"
 	"github.com/graphql-go/graphql"
 	"net/http"
 )
 
-//todo think about names for everything
-
-type GraphQLGroup struct {
-	A      gql2.Access
+type PostGroupGQL struct {
+	P      postgql.PostGQL
 	schema graphql.Schema
 }
 
-func (gqlg *GraphQLGroup) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	// get query
 	opts := gql.NewRequestOptions(r)
 
-	ctx = context.WithValue(ctx, gql2.Key, gqlg.A)
+	ctx = context.WithValue(ctx, postgql.Key, gqlg.P)
 	// execute graphql query
 	params := graphql.Params{
 		Schema:         gqlg.schema,
@@ -31,6 +29,5 @@ func (gqlg *GraphQLGroup) handle(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	result := graphql.Do(params)
-	web.Respond(ctx, w, result, http.StatusOK)
-	return nil
+	return web.Respond(ctx, w, result, http.StatusOK)
 }

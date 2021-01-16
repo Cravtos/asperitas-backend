@@ -3,7 +3,8 @@
 package handlers
 
 import (
-	"github.com/cravtos/asperitas-backend/business/data/gql"
+	"github.com/cravtos/asperitas-backend/business/data/postgql"
+	"github.com/graphql-go/graphql"
 	"log"
 	"net/http"
 	"os"
@@ -17,7 +18,9 @@ import (
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, db *sqlx.DB) http.Handler {
+func API(
+	build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, db *sqlx.DB, gqlschema graphql.Schema,
+) http.Handler {
 
 	// Construct the web.App which holds all routes as well as common Middleware.
 	app := web.NewApp(shutdown, mid.Logger(log), mid.Errors(log), mid.Panics(log))
@@ -70,10 +73,9 @@ func API(build string, shutdown chan os.Signal, log *log.Logger, a *auth.Auth, d
 	app.Handle(http.MethodOptions, "/api/post/:post_id/downvote", cog.allow("GET"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/unvote", cog.allow("GET"))
 
-	//todo change source of Schema
-	gqlg := GraphQLGroup{
-		A:      gql.NewAccess(log, db),
-		schema: gql.Schema,
+	gqlg := PostGroupGQL{
+		P:      postgql.NewPostGQL(log, db),
+		schema: gqlschema,
 	}
 
 	app.HandleGraphQL(http.MethodPost, "/api/graphql", gqlg.handle)

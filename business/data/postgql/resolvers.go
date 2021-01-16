@@ -1,4 +1,4 @@
-package gql
+package postgql
 
 import (
 	"github.com/graphql-go/graphql"
@@ -18,7 +18,7 @@ func resolverTitle(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func resolverAnyPost(p graphql.ResolveParams) (interface{}, error) {
-	a, ok := p.Context.Value(Key).(Access)
+	a, ok := p.Context.Value(Key).(PostGQL)
 	if !ok {
 		return nil, errors.New("claims missing from context")
 	}
@@ -30,7 +30,7 @@ func resolverAnyPost(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func resolverAllPost(p graphql.ResolveParams) (interface{}, error) {
-	a, ok := p.Context.Value(Key).(Access)
+	a, ok := p.Context.Value(Key).(PostGQL)
 	if !ok {
 		return nil, errors.New("claims missing from context")
 	}

@@ -32,10 +32,10 @@ type Keys map[string]*rsa.PrivateKey
 // PublicKeyLookup defines the signature of a function to lookup public keys.
 //
 // In a production system, a key id (KID) is used to retrieve the correct
-// public key to parse a JWT for auth and claims. A key lookup function is
+// public key to parse a JWT for auth and claims. P key lookup function is
 // provided to perform the task of retrieving a KID for a given public key.
 //
-// A key lookup function is required for creating an Authenticator.
+// P key lookup function is required for creating an Authenticator.
 //
 // * Private keys should be rotated. During the transition period, tokens
 // signed with the old and new keys can coexist by looking up the correct

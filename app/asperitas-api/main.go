@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"fmt"
+	"github.com/cravtos/asperitas-backend/business/data/postgql"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -171,9 +172,14 @@ func run(log *log.Logger) error {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
+	gqlschema, err := postgql.GetSchema()
+	if err != nil {
+		return errors.Wrap(err, "getting GQL schema")
+	}
+
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      handlers.API(build, shutdown, log, auth, db),
+		Handler:      handlers.API(build, shutdown, log, auth, db, gqlschema),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 	}

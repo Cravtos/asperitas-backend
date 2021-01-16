@@ -1,4 +1,4 @@
-package gql
+package postgql
 
 import (
 	"github.com/graphql-go/graphql"
@@ -32,6 +32,10 @@ var queryType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
+var schema, err = graphql.NewSchema(graphql.SchemaConfig{
 	Query: queryType,
 })
+
+func GetSchema() (graphql.Schema, error) {
+	return schema, err
+}

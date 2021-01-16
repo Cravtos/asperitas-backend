@@ -23,7 +23,7 @@ type Values struct {
 	StatusCode int
 }
 
-// A Handler is a type that handles an http request within our own little mini
+// P Handler is a type that handles an http request within our own little mini
 // framework.
 type Handler func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 

@@ -1,4 +1,4 @@
-package gql
+package postgql
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 //todo think about names for everything
-//todo take common helpers out of gql and post
+//todo take common helpers out of postgql and post
 
 // ctxKey represents the type of value for the context key.
 type ctxKey int
@@ -18,13 +18,13 @@ type ctxKey int
 // Key is used to store/retrieve a Claims value from a context.Context.
 const Key ctxKey = 1
 
-type Access struct {
+type PostGQL struct {
 	log *log.Logger
 	db  *sqlx.DB
 }
 
-func NewAccess(log *log.Logger, db *sqlx.DB) Access {
-	return Access{
+func NewPostGQL(log *log.Logger, db *sqlx.DB) PostGQL {
+	return PostGQL{
 		log: log,
 		db:  db,
 	}
@@ -64,7 +64,7 @@ type Comment struct {
 }
 
 // getPostScore returns score of a single post
-func (p Access) getPostScore(ctx context.Context, ID string) (int, error) {
+func (p PostGQL) getPostScore(ctx context.Context, ID string) (int, error) {
 	const qScore = `SELECT SUM(vote) as score FROM votes WHERE post_id = $1 HAVING SUM(vote) is not null`
 
 	p.log.Printf("%s: %s", "post.helpers.getPostScore", database.Log(qScore))
@@ -77,7 +77,7 @@ func (p Access) getPostScore(ctx context.Context, ID string) (int, error) {
 }
 
 // selectAllPosts return all posts stored in database
-func (p Access) selectAllPosts(ctx context.Context) ([]postDB, error) {
+func (p PostGQL) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts`
 
 	p.log.Printf("%s: %s", "post.helpers.selectAllPosts", database.Log(qPost))
