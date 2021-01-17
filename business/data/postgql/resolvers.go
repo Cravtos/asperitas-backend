@@ -64,7 +64,7 @@ func posts(p graphql.ResolveParams) (interface{}, error) {
 		return nil, errors.New("postGQL missing from context")
 	}
 
-	posts, err := a.obtainPosts(p.Context, p.Args["category"])
+	posts, err := a.obtainPosts(p.Context, p.Args["category"], p.Args["user_id"])
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,6 @@ func posts(p graphql.ResolveParams) (interface{}, error) {
 		posts[i].Votes = votes
 		posts[i].Comments = comments
 	}
-	a.log.Println(p.Args)
 	return posts, nil
 }
 
@@ -275,7 +274,7 @@ func authorPosts(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("author missing from context")
 	}
-	posts, err := a.selectPostsByUser(p.Context, src.ID)
+	posts, err := a.obtainPosts(p.Context, p.Args["category"], src.ID)
 	if err != nil {
 		return nil, err
 	}

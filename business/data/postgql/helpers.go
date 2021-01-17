@@ -96,15 +96,20 @@ func (p PostGQL) getPostScore(ctx context.Context, ID string) (int, error) {
 	return score, nil
 }
 
-func (p PostGQL) obtainPosts(ctx context.Context, category interface{}) ([]postDB, error) {
-	if category == nil || category == 1 {
+func (p PostGQL) obtainPosts(ctx context.Context, category interface{}, userID interface{}) ([]postDB, error) {
+	cat := category
+	if category == nil {
+		cat = "all"
+	}
+	if cat == "all" && userID == nil {
 		return p.selectAllPosts(ctx)
+	} else if cat == "all" {
+		return p.selectPostsByUser(ctx, userID.(string))
+	} else if userID == nil {
+		return p.selectPostsByCategory(ctx, cat.(string))
+	} else {
+		return p.selectPostsByCategoryAndUser(ctx, cat.(string), userID.(string))
 	}
-	_, ok := category.(string)
-	if !ok {
-		return nil, errors.Errorf("got wrong category %v\n", category)
-	}
-	return p.selectPostsByCategory(ctx, category.(string))
 }
 
 // selectPostsByCategory returns all posts with a given category stored in database
@@ -115,6 +120,19 @@ func (p PostGQL) selectPostsByCategory(ctx context.Context, category string) ([]
 
 	var posts []postDB
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
+		return nil, errors.Wrap(err, "selecting category posts")
+	}
+	return posts, nil
+}
+
+// selectPostsByCategoryAndUser returns all posts with a given category from user stored in database
+func (p PostGQL) selectPostsByCategoryAndUser(ctx context.Context, category string, userID string) ([]postDB, error) {
+	const qPost = `SELECT * FROM posts WHERE category = $1 and user_id = $2`
+
+	p.log.Printf("%s: %s", "post.helpers.selectPostsByCategoryAndUser", database.Log(qPost, category, userID))
+
+	var posts []postDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, category, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting category posts")
 	}
 	return posts, nil

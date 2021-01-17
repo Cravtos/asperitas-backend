@@ -256,6 +256,11 @@ func Init() {
 	authorType.AddFieldConfig("posts", &graphql.Field{
 		Type:    graphql.NewList(infoInterface),
 		Resolve: authorPosts,
+		Args: graphql.FieldConfigArgument{
+			"category": &graphql.ArgumentConfig{
+				Type: categoryEnum,
+			},
+		},
 	})
 
 	commentType.AddFieldConfig("post", &graphql.Field{
@@ -280,6 +285,9 @@ func Init() {
 				Args: graphql.FieldConfigArgument{
 					"category": &graphql.ArgumentConfig{
 						Type: categoryEnum,
+					},
+					"user_id": &graphql.ArgumentConfig{
+						Type: graphql.String,
 					},
 				},
 			},
