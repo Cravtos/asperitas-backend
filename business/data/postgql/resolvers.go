@@ -58,12 +58,13 @@ func anyPost(p graphql.ResolveParams) (interface{}, error) {
 	return posts[0], nil
 }
 
-func allPosts(p graphql.ResolveParams) (interface{}, error) {
+func posts(p graphql.ResolveParams) (interface{}, error) {
 	a, ok := p.Context.Value(Key).(PostGQL)
 	if !ok {
 		return nil, errors.New("postGQL missing from context")
 	}
-	posts, err := a.selectAllPosts(p.Context)
+
+	posts, err := a.obtainPosts(p.Context, p.Args["category"])
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +88,7 @@ func allPosts(p graphql.ResolveParams) (interface{}, error) {
 		posts[i].Votes = votes
 		posts[i].Comments = comments
 	}
+	a.log.Println(p.Args)
 	return posts, nil
 }
 

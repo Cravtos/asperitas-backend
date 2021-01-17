@@ -16,7 +16,32 @@ var (
 )
 
 func Init() {
-
+	categoryEnum := graphql.NewEnum(graphql.EnumConfig{
+		Name: "Category",
+		Values: graphql.EnumValueConfigMap{
+			"ALL": &graphql.EnumValueConfig{
+				Value: "all",
+			},
+			"MUSIC": &graphql.EnumValueConfig{
+				Value: "music",
+			},
+			"FUNNY": &graphql.EnumValueConfig{
+				Value: "funny",
+			},
+			"VIDEOS": &graphql.EnumValueConfig{
+				Value: "videos",
+			},
+			"PROGRAMMING": &graphql.EnumValueConfig{
+				Value: "programming",
+			},
+			"NEWS": &graphql.EnumValueConfig{
+				Value: "news",
+			},
+			"FASHION": &graphql.EnumValueConfig{
+				Value: "fashion",
+			},
+		},
+	})
 	authorType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Author",
 		Fields: graphql.Fields{
@@ -249,9 +274,14 @@ func Init() {
 				Type:    infoInterface,
 				Resolve: anyPost,
 			},
-			"allPosts": &graphql.Field{
+			"posts": &graphql.Field{
 				Type:    graphql.NewList(infoInterface),
-				Resolve: allPosts,
+				Resolve: posts,
+				Args: graphql.FieldConfigArgument{
+					"category": &graphql.ArgumentConfig{
+						Type: categoryEnum,
+					},
+				},
 			},
 		},
 	})

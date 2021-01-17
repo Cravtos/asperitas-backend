@@ -96,6 +96,30 @@ func (p PostGQL) getPostScore(ctx context.Context, ID string) (int, error) {
 	return score, nil
 }
 
+func (p PostGQL) obtainPosts(ctx context.Context, category interface{}) ([]postDB, error) {
+	if category == nil || category == 1 {
+		return p.selectAllPosts(ctx)
+	}
+	_, ok := category.(string)
+	if !ok {
+		return nil, errors.Errorf("got wrong category %v\n", category)
+	}
+	return p.selectPostsByCategory(ctx, category.(string))
+}
+
+// selectPostsByCategory returns all posts with a given category stored in database
+func (p PostGQL) selectPostsByCategory(ctx context.Context, category string) ([]postDB, error) {
+	const qPost = `SELECT * FROM posts WHERE category = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.selectPostsByCategory", database.Log(qPost))
+
+	var posts []postDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
+		return nil, errors.Wrap(err, "selecting category posts")
+	}
+	return posts, nil
+}
+
 // selectAllPosts return all posts stored in database
 func (p PostGQL) selectAllPosts(ctx context.Context) ([]postDB, error) {
 	const qPost = `SELECT * FROM posts`
