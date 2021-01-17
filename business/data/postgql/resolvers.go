@@ -333,3 +333,34 @@ func commentPost(p graphql.ResolveParams) (interface{}, error) {
 	}
 	return post, nil
 }
+
+func post(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(Key).(PostGQL)
+	if !ok {
+		return nil, errors.New("postGQL missing from context")
+	}
+
+	post, err := a.getPostByID(p.Context, p.Args["post_id"].(string))
+	if err != nil {
+		return nil, err
+	}
+
+	author, err := a.getAuthorByID(p.Context, post.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	votes, err := a.selectVotesByPostID(p.Context, post.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	comments, err := a.selectCommentsByPostID(p.Context, post.ID)
+	if err != nil {
+		return nil, err
+	}
+	post.Author = author
+	post.Votes = votes
+	post.Comments = comments
+	return post, nil
+}

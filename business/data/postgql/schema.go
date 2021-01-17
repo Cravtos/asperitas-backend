@@ -291,6 +291,15 @@ func Init() {
 					},
 				},
 			},
+			"post": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: post,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+			},
 		},
 	})
 
