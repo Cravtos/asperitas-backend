@@ -213,13 +213,13 @@ func voteUserID(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("vote missing from context")
 	}
-	return src.User, nil
+	return src.UserID, nil
 }
 
 func commentID(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Comment)
 	if !ok {
-		return nil, errors.New("vote missing from context")
+		return nil, errors.New("comment missing from context")
 	}
 	return src.ID, nil
 }
@@ -227,7 +227,7 @@ func commentID(p graphql.ResolveParams) (interface{}, error) {
 func commentBody(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Comment)
 	if !ok {
-		return nil, errors.New("vote missing from context")
+		return nil, errors.New("comment missing from context")
 	}
 	return src.Body, nil
 }
@@ -235,7 +235,7 @@ func commentBody(p graphql.ResolveParams) (interface{}, error) {
 func commentAuthor(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Comment)
 	if !ok {
-		return nil, errors.New("vote missing from context")
+		return nil, errors.New("comment missing from context")
 	}
 	return src.Author, nil
 }
@@ -243,7 +243,7 @@ func commentAuthor(p graphql.ResolveParams) (interface{}, error) {
 func commentDateCreated(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Comment)
 	if !ok {
-		return nil, errors.New("vote missing from context")
+		return nil, errors.New("comment missing from context")
 	}
 	return src.DateCreated, nil
 }
@@ -262,4 +262,73 @@ func postComments(p graphql.ResolveParams) (interface{}, error) {
 		return nil, errors.New("post missing from context")
 	}
 	return src.Comments, nil
+}
+
+func authorPosts(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(Key).(PostGQL)
+	if !ok {
+		return nil, errors.New("postGQL missing from context")
+	}
+	src, ok := p.Source.(Author)
+	if !ok {
+		return nil, errors.New("author missing from context")
+	}
+	posts, err := a.selectPostsByUser(p.Context, src.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, post := range posts {
+		author, err := a.getAuthorByID(p.Context, post.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		votes, err := a.selectVotesByPostID(p.Context, post.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		comments, err := a.selectCommentsByPostID(p.Context, post.ID)
+		if err != nil {
+			return nil, err
+		}
+		posts[i].Author = author
+		posts[i].Votes = votes
+		posts[i].Comments = comments
+	}
+	return posts, nil
+}
+
+func voteUser(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(Key).(PostGQL)
+	if !ok {
+		return nil, errors.New("postGQL missing from context")
+	}
+	src, ok := p.Source.(Vote)
+	if !ok {
+		return nil, errors.New("vote missing from context")
+	}
+	author, err := a.getAuthorByID(p.Context, src.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	return author, nil
+}
+
+func commentPost(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(Key).(PostGQL)
+	if !ok {
+		return nil, errors.New("postGQL missing from context")
+	}
+	src, ok := p.Source.(Comment)
+	if !ok {
+		return nil, errors.New("comment missing from context")
+	}
+	post, err := a.getPostByID(p.Context, src.PostID)
+	if err != nil {
+		return nil, err
+	}
+	return post, nil
 }

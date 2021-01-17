@@ -2,6 +2,7 @@ package postgql
 
 import (
 	"context"
+	"database/sql"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
@@ -9,8 +10,24 @@ import (
 	"time"
 )
 
-//todo think about names for everything
 //todo take common helpers out of postgql and post
+
+var (
+	// ErrInvalidID occurs when an ID is not in a valid form.
+	ErrInvalidID = errors.New("invalid post id")
+
+	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
+	ErrForbidden = errors.New("attempted action is not allowed")
+
+	// ErrPostNotFound is used when a specific Post is requested but does not exist.
+	ErrPostNotFound = errors.New("post not found")
+
+	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
+	ErrCommentNotFound = errors.New("comment not found")
+
+	//ErrCommentNotFound is used when user tries to create post with incorrect type.
+	ErrWrongPostType = errors.New("new post should be of type url or text")
+)
 
 // ctxKey represents the type of value for the context key.
 type ctxKey int
@@ -40,29 +57,30 @@ type postDB struct {
 	Payload     string    `db:"payload"`
 	DateCreated time.Time `db:"date_created"`
 	UserID      string    `db:"user_id"`
-	Author      Author    `json:"authorType"`
-	Votes       []Vote    `json:"votes"`
-	Comments    []Comment `json:"comments"`
+	Author      Author
+	Votes       []Vote
+	Comments    []Comment
 }
 
 // Author represents info about authorType
 type Author struct {
-	Username string `db:"name" json:"username"`
-	ID       string `db:"user_id" json:"id"`
+	Username string `db:"name"`
+	ID       string `db:"user_id"`
 }
 
 // Vote represents info about user vote.
 type Vote struct {
-	User string `db:"user_id" json:"user"`
-	Vote int    `db:"vote" json:"vote"`
+	UserID string `db:"user_id" `
+	Vote   int    `db:"vote"`
 }
 
 // Comment represents info about comments for the post prepared to be sent to user.
 type Comment struct {
-	DateCreated time.Time `json:"created"`
-	Author      Author    `json:"authorType"`
-	Body        string    `json:"body"`
-	ID          string    `json:"id"`
+	PostID      string
+	DateCreated time.Time
+	Author      Author
+	Body        string
+	ID          string
 }
 
 // getPostScore returns score of a single post
@@ -148,6 +166,7 @@ func (p PostGQL) selectCommentsByPostID(ctx context.Context, ID string) ([]Comme
 			ID:       comment.AuthorID,
 		}
 		comments = append(comments, Comment{
+			PostID:      ID,
 			DateCreated: comment.DateCreated,
 			Author:      author,
 			Body:        comment.Body,
@@ -155,4 +174,33 @@ func (p PostGQL) selectCommentsByPostID(ctx context.Context, ID string) ([]Comme
 		})
 	}
 	return comments, nil
+}
+
+func (p PostGQL) selectPostsByUser(ctx context.Context, userID string) ([]postDB, error) {
+	const qPost = `SELECT * FROM posts WHERE user_id = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.selectPostsByUser", database.Log(qPost))
+
+	var posts []postDB
+	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
+		return nil, errors.Wrap(err, "selecting users posts")
+	}
+
+	return posts, nil
+}
+
+// getPostByID obtains post from database using ID
+func (p PostGQL) getPostByID(ctx context.Context, postID string) (postDB, error) {
+	const q = `	SELECT * FROM posts WHERE post_id = $1`
+
+	p.log.Printf("%s: %s", "post.helpers.getPostByID", database.Log(q, postID))
+
+	var post postDB
+	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
+		if err == sql.ErrNoRows {
+			return postDB{}, ErrPostNotFound
+		}
+		return postDB{}, errors.Wrap(err, "selecting post by ID")
+	}
+	return post, nil
 }

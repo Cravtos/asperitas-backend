@@ -7,14 +7,16 @@ import (
 var (
 	Schema graphql.Schema
 
-	postLinkType *graphql.Object
-	postTextType *graphql.Object
-	authorType   *graphql.Object
-	voteType     *graphql.Object
-	commentType  *graphql.Object
+	infoInterface *graphql.Interface
+	postLinkType  *graphql.Object
+	postTextType  *graphql.Object
+	authorType    *graphql.Object
+	voteType      *graphql.Object
+	commentType   *graphql.Object
 )
 
 func Init() {
+
 	authorType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Author",
 		Fields: graphql.Fields{
@@ -26,7 +28,6 @@ func Init() {
 				Type:    graphql.ID,
 				Resolve: authorID,
 			},
-			//todo add list of posts
 		},
 	})
 	voteType = graphql.NewObject(graphql.ObjectConfig{
@@ -40,7 +41,10 @@ func Init() {
 				Type:    graphql.ID,
 				Resolve: voteUserID,
 			},
-			//todo add User
+			"user": &graphql.Field{
+				Type:    authorType,
+				Resolve: voteUser,
+			},
 		},
 	})
 	commentType = graphql.NewObject(graphql.ObjectConfig{
@@ -62,10 +66,9 @@ func Init() {
 				Type:    authorType,
 				Resolve: commentAuthor,
 			},
-			//todo add post
 		},
 	})
-	var infoInterface = graphql.NewInterface(graphql.InterfaceConfig{
+	infoInterface = graphql.NewInterface(graphql.InterfaceConfig{
 		Name: "Info",
 		ResolveType: func(p graphql.ResolveTypeParams) *graphql.Object {
 			post, _ := p.Value.(postDB)
@@ -225,6 +228,16 @@ func Init() {
 		},
 	})
 
+	authorType.AddFieldConfig("posts", &graphql.Field{
+		Type:    graphql.NewList(infoInterface),
+		Resolve: authorPosts,
+	})
+
+	commentType.AddFieldConfig("post", &graphql.Field{
+		Type:    infoInterface,
+		Resolve: commentPost,
+	})
+
 	var queryType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
@@ -245,7 +258,7 @@ func Init() {
 
 	Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
 		Query: queryType,
-		Types: []graphql.Type{postTextType, postLinkType},
+		Types: []graphql.Type{postTextType, postLinkType, authorType, commentType, voteType},
 	})
 }
 

@@ -29,8 +29,8 @@ func TestUser(t *testing.T) {
 			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
 
 			nu := user.NewUser{
-				Name:            "Bill Kennedy",
-				Password:        "gophers",
+				Name:     "Bill Kennedy",
+				Password: "gophers",
 			}
 
 			usr, err := u.Create(ctx, nu, now)
@@ -46,7 +46,7 @@ func TestUser(t *testing.T) {
 				},
 				User: auth.User{
 					Username: usr.Name,
-					ID: usr.ID,
+					ID:       usr.ID,
 				},
 			}
 
@@ -144,8 +144,8 @@ func TestAuthenticate(t *testing.T) {
 			now := time.Date(2018, time.October, 1, 0, 0, 0, 0, time.UTC)
 
 			nu := user.NewUser{
-				Name:            "Anna Walker",
-				Password:        "goroutines",
+				Name:     "Anna Walker",
+				Password: "goroutines",
 			}
 
 			usr, err := u.Create(ctx, nu, now)
@@ -154,7 +154,7 @@ func TestAuthenticate(t *testing.T) {
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to create user.", tests.Success, testID)
 
-			claims, err := u.Authenticate(ctx,"Anna Walker", "goroutines", now)
+			claims, err := u.Authenticate(ctx, "Anna Walker", "goroutines", now)
 			if err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to generate claims : %s.", tests.Failed, testID, err)
 			}
@@ -167,7 +167,7 @@ func TestAuthenticate(t *testing.T) {
 				},
 				User: auth.User{
 					Username: usr.Name,
-					ID: usr.ID,
+					ID:       usr.ID,
 				},
 			}
 
