@@ -336,6 +336,8 @@ func postCreate(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("postGQL missing from context")
 	}
+
+	//authentication starts
 	authStr, ok := p.Context.Value(KeyAuthHeader).(string)
 	if !ok {
 		err := errors.New("expected authorization header format: bearer <token>")
@@ -362,6 +364,7 @@ func postCreate(p graphql.ResolveParams) (interface{}, error) {
 	if err != nil {
 		return nil, web.NewRequestError(err, http.StatusUnauthorized)
 	}
+	//authentication ends
 
 	dbs := db.NewDBset(a.log, a.db)
 	newPost := db.PostDB{

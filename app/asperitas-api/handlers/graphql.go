@@ -7,6 +7,8 @@ import (
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/cravtos/asperitas-backend/foundation/web/gql"
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
+	"log"
 	"net/http"
 )
 
@@ -34,6 +36,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 
 	result := graphql.Do(params)
 	//todo do error handling
-
+	_, ok := result.Errors[0].OriginalError().(*gqlerrors.Error)
+	log.Printf("errors %+v\n", ok)
 	return web.Respond(ctx, w, result, http.StatusOK)
 }
