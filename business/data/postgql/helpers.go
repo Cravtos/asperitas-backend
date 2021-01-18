@@ -1,7 +1,6 @@
 package postgql
 
 import (
-	"context"
 	"github.com/cravtos/asperitas-backend/business/data/db"
 )
 
@@ -74,7 +73,7 @@ func convertUser(userDB db.UserDB) Author {
 	return Author{Username: userDB.Username, ID: userDB.ID}
 }
 
-func (g PostGQL) parseCatAndUser(category interface{}, userID interface{}) (string, string) {
+func parseCatAndUser(category interface{}, userID interface{}) (string, string) {
 	if category == nil && userID == nil {
 		return "all", ""
 	} else if category == nil {
@@ -99,37 +98,4 @@ func (g PostGQL) parseCatAndUser(category interface{}, userID interface{}) (stri
 		}
 		return "all", ""
 	}
-}
-
-func (g PostGQL) fillInfoWithVotes(ctx context.Context, src Info) (Info, error) {
-	dbs := db.NewDBset(g.log, g.db)
-	votesDB, err := dbs.SelectVotesByPostID(ctx, src.ID)
-	if err != nil {
-		return Info{}, err
-	}
-	votes := convertVotes(votesDB)
-	src.Votes = votes
-	return src, nil
-}
-
-func (g PostGQL) fillInfoWithAuthor(ctx context.Context, src Info) (Info, error) {
-	dbs := db.NewDBset(g.log, g.db)
-	userDB, err := dbs.GetUserByID(ctx, src.UserID)
-	if err != nil {
-		return Info{}, err
-	}
-	author := convertUser(userDB)
-	src.Author = &author
-	return src, nil
-}
-
-func (g PostGQL) fillInfoWithComments(ctx context.Context, src Info) (Info, error) {
-	dbs := db.NewDBset(g.log, g.db)
-	commentsWithAuthorDB, err := dbs.SelectCommentsWithUserByPostID(ctx, src.ID)
-	if err != nil {
-		return Info{}, err
-	}
-	comments := convertComments(commentsWithAuthorDB)
-	src.Comments = comments
-	return src, nil
 }

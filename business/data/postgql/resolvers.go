@@ -11,29 +11,27 @@ import (
 	"strings"
 )
 
-//todo: take out authentication
+//todo: move out authentication
 //TODO think about error handling
 func Hello(p graphql.ResolveParams) (interface{}, error) {
 	return "World", nil
 }
 
 func postTitle(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
-	if !ok {
-		return nil, errors.New("post missing from context")
+	if src, ok := p.Source.(Info); ok {
+		return src.Title, nil
 	}
-	return src.Title, nil
+	return nil, errors.New("post missing from context")
 }
 
 func postType(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
-	if !ok {
-		return nil, errors.New("post missing from context")
+	if src, ok := p.Source.(Info); ok {
+		if src.Type == "url" {
+			return "link", nil
+		}
+		return src.Type, nil
 	}
-	if src.Type == "url" {
-		return "link", nil
-	}
-	return src.Type, nil
+	return nil, errors.New("post missing from context")
 }
 
 func anyPost(p graphql.ResolveParams) (interface{}, error) {
@@ -49,6 +47,10 @@ func anyPost(p graphql.ResolveParams) (interface{}, error) {
 	}
 
 	post := convertPost(postsDB[0])
+	post, err = a.fillInfo(p.Context, post)
+	if err != nil {
+		return nil, err
+	}
 	return post, nil
 }
 
@@ -59,13 +61,17 @@ func posts(p graphql.ResolveParams) (interface{}, error) {
 	}
 	dbs := db.NewDBset(a.log, a.db)
 
-	category, userID := a.parseCatAndUser(p.Args["category"], p.Args["user_id"])
+	category, userID := parseCatAndUser(p.Args["category"], p.Args["user_id"])
 	postsDB, err := dbs.ObtainPosts(p.Context, category, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	posts := convertPosts(postsDB)
+	posts, err = a.fillInfos(p.Context, posts)
+	if err != nil {
+		return nil, err
+	}
 	return posts, nil
 }
 
@@ -104,17 +110,7 @@ func postScore(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("post missing from context")
 	}
-	if src.Votes == nil {
-		a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
-		if !ok {
-			return nil, errors.New("postGQL missing from context")
-		}
-		srcWithVotes, err := a.fillInfoWithVotes(p.Context, src)
-		if err != nil {
-			return nil, err
-		}
-		src = srcWithVotes
-	}
+
 	score := 0
 	for _, vote := range src.Votes {
 		score += vote.Vote
@@ -150,18 +146,6 @@ func postAuthor(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, errors.New("post missing from context")
 	}
-
-	if src.Author == nil {
-		a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
-		if !ok {
-			return nil, errors.New("postGQL missing from context")
-		}
-		srcWithAuthor, err := a.fillInfoWithAuthor(p.Context, src)
-		if err != nil {
-			return nil, err
-		}
-		src = srcWithAuthor
-	}
 	return src.Author, nil
 }
 
@@ -169,18 +153,6 @@ func postUpvotePercentage(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Info)
 	if !ok {
 		return nil, errors.New("post missing from context")
-	}
-
-	if src.Votes == nil {
-		a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
-		if !ok {
-			return nil, errors.New("postGQL missing from context")
-		}
-		srcWithVotes, err := a.fillInfoWithVotes(p.Context, src)
-		if err != nil {
-			return nil, err
-		}
-		src = srcWithVotes
 	}
 
 	if len(src.Votes) == 0 {
@@ -267,18 +239,6 @@ func postVotes(p graphql.ResolveParams) (interface{}, error) {
 		return nil, errors.New("post missing from context")
 	}
 
-	if src.Votes == nil {
-		a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
-		if !ok {
-			return nil, errors.New("postGQL missing from context")
-		}
-		srcWithVotes, err := a.fillInfoWithVotes(p.Context, src)
-		if err != nil {
-			return nil, err
-		}
-		src = srcWithVotes
-	}
-
 	return src.Votes, nil
 }
 
@@ -286,18 +246,6 @@ func postComments(p graphql.ResolveParams) (interface{}, error) {
 	src, ok := p.Source.(Info)
 	if !ok {
 		return nil, errors.New("post missing from context")
-	}
-
-	if src.Comments == nil {
-		a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
-		if !ok {
-			return nil, errors.New("postGQL missing from context")
-		}
-		srcWithComments, err := a.fillInfoWithComments(p.Context, src)
-		if err != nil {
-			return nil, err
-		}
-		src = srcWithComments
 	}
 	return src.Comments, nil
 }
@@ -313,15 +261,16 @@ func authorPosts(p graphql.ResolveParams) (interface{}, error) {
 	}
 	dbs := db.NewDBset(a.log, a.db)
 
-	category, userID := a.parseCatAndUser(p.Args["category"], src.ID)
+	category, userID := parseCatAndUser(p.Args["category"], src.ID)
 	postsDB, err := dbs.ObtainPosts(p.Context, category, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	posts := convertPosts(postsDB)
-	for i := range posts {
-		posts[i].Author = src
+	posts, err = a.fillInfos(p.Context, posts)
+	if err != nil {
+		return nil, err
 	}
 	return posts, nil
 }
@@ -376,6 +325,10 @@ func post(p graphql.ResolveParams) (interface{}, error) {
 		return nil, err
 	}
 	post := convertPost(postDB)
+	post, err = a.fillInfo(p.Context, post)
+	if err != nil {
+		return nil, err
+	}
 	return post, nil
 }
 

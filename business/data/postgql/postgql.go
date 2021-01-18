@@ -1,6 +1,8 @@
 package postgql
 
 import (
+	"context"
+	"github.com/cravtos/asperitas-backend/business/data/db"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"log"
@@ -35,4 +37,47 @@ func NewPostGQL(log *log.Logger, db *sqlx.DB) PostGQL {
 		log: log,
 		db:  db,
 	}
+}
+
+//fillInfos fills slice of Info with votes, comments and author for each Post
+func (g PostGQL) fillInfos(ctx context.Context, posts []Info) ([]Info, error) {
+	for i, post := range posts {
+		filledPost, err := g.fillInfo(ctx, post)
+		if err != nil {
+			return nil, err
+		}
+		posts[i] = filledPost
+	}
+	return posts, nil
+}
+
+//fillInfo fills Info with votes, comments and author
+func (g PostGQL) fillInfo(ctx context.Context, src Info) (Info, error) {
+	dbs := db.NewDBset(g.log, g.db)
+
+	//obtaining votes for post
+	votesDB, err := dbs.SelectVotesByPostID(ctx, src.ID)
+	if err != nil {
+		return Info{}, err
+	}
+	votes := convertVotes(votesDB)
+	src.Votes = votes
+
+	//obtaining author for post
+	userDB, err := dbs.GetUserByID(ctx, src.UserID)
+	if err != nil {
+		return Info{}, err
+	}
+	author := convertUser(userDB)
+	src.Author = &author
+
+	//obtaining comments for post
+	commentsWithAuthorDB, err := dbs.SelectCommentsWithUserByPostID(ctx, src.ID)
+	if err != nil {
+		return Info{}, err
+	}
+	comments := convertComments(commentsWithAuthorDB)
+	src.Comments = comments
+
+	return src, nil
 }
