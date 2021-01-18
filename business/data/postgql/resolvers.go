@@ -12,7 +12,6 @@ import (
 )
 
 //todo: move out authentication
-//TODO think about error handling
 func Hello(p graphql.ResolveParams) (interface{}, error) {
 	return "World", nil
 }
@@ -332,7 +331,6 @@ func post(p graphql.ResolveParams) (interface{}, error) {
 	return post, nil
 }
 
-//todo replace RequestErrors with new GQL errors
 func postCreate(p graphql.ResolveParams) (interface{}, error) {
 	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
 	if !ok {
