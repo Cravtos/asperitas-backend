@@ -32,8 +32,10 @@ var (
 // ctxKey represents the type of value for the context key.
 type ctxKey int
 
-// Key is used to store/retrieve a Claims value from a context.Context.
-const Key ctxKey = 1
+// KeyPostGQL is used to store/retrieve a Claims value from a context.Context.
+const KeyPostGQL ctxKey = 1
+const KeyAuthHeader ctxKey = 2
+const KeyAuth ctxKey = 3
 
 type PostGQL struct {
 	log *log.Logger
@@ -47,8 +49,8 @@ func NewPostGQL(log *log.Logger, db *sqlx.DB) PostGQL {
 	}
 }
 
-// postDB represents an individual post in database. (with additional field "score" counted using votes table)
-type postDB struct {
+// Info represents an individual post before sending it to user
+type Info struct {
 	ID          string    `db:"post_id"`
 	Views       int       `db:"views"`
 	Type        string    `db:"type"`
@@ -60,6 +62,18 @@ type postDB struct {
 	Author      Author
 	Votes       []Vote
 	Comments    []Comment
+}
+
+// postDB represents an individual post in database. (with additional field "score" counted using votes table)
+type postDB struct {
+	ID          string    `db:"post_id"`
+	Views       int       `db:"views"`
+	Type        string    `db:"type"`
+	Title       string    `db:"title"`
+	Category    string    `db:"category"`
+	Payload     string    `db:"payload"`
+	DateCreated time.Time `db:"date_created"`
+	UserID      string    `db:"user_id"`
 }
 
 // Author represents info about authorType
@@ -96,7 +110,7 @@ func (p PostGQL) getPostScore(ctx context.Context, ID string) (int, error) {
 	return score, nil
 }
 
-func (p PostGQL) obtainPosts(ctx context.Context, category interface{}, userID interface{}) ([]postDB, error) {
+func (p PostGQL) obtainPosts(ctx context.Context, category interface{}, userID interface{}) ([]Info, error) {
 	cat := category
 	if category == nil {
 		cat = "all"
@@ -113,12 +127,12 @@ func (p PostGQL) obtainPosts(ctx context.Context, category interface{}, userID i
 }
 
 // selectPostsByCategory returns all posts with a given category stored in database
-func (p PostGQL) selectPostsByCategory(ctx context.Context, category string) ([]postDB, error) {
+func (p PostGQL) selectPostsByCategory(ctx context.Context, category string) ([]Info, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
 	p.log.Printf("%s: %s", "post.helpers.selectPostsByCategory", database.Log(qPost))
 
-	var posts []postDB
+	var posts []Info
 	if err := p.db.SelectContext(ctx, &posts, qPost, category); err != nil {
 		return nil, errors.Wrap(err, "selecting category posts")
 	}
@@ -126,12 +140,12 @@ func (p PostGQL) selectPostsByCategory(ctx context.Context, category string) ([]
 }
 
 // selectPostsByCategoryAndUser returns all posts with a given category from user stored in database
-func (p PostGQL) selectPostsByCategoryAndUser(ctx context.Context, category string, userID string) ([]postDB, error) {
+func (p PostGQL) selectPostsByCategoryAndUser(ctx context.Context, category string, userID string) ([]Info, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1 and user_id = $2`
 
 	p.log.Printf("%s: %s", "post.helpers.selectPostsByCategoryAndUser", database.Log(qPost, category, userID))
 
-	var posts []postDB
+	var posts []Info
 	if err := p.db.SelectContext(ctx, &posts, qPost, category, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting category posts")
 	}
@@ -139,17 +153,53 @@ func (p PostGQL) selectPostsByCategoryAndUser(ctx context.Context, category stri
 }
 
 // selectAllPosts return all posts stored in database
-func (p PostGQL) selectAllPosts(ctx context.Context) ([]postDB, error) {
+func (p PostGQL) selectAllPosts(ctx context.Context) ([]Info, error) {
 	const qPost = `SELECT * FROM posts`
 
 	p.log.Printf("%s: %s", "post.helpers.selectAllPosts", database.Log(qPost))
 
-	var posts []postDB
+	var posts []Info
 	if err := p.db.SelectContext(ctx, &posts, qPost); err != nil {
 		return nil, errors.Wrap(err, "selecting all posts")
 	}
 
 	return posts, nil
+}
+
+// insertPost adds one new row to posts table
+func (p PostGQL) insertPost(ctx context.Context, post postDB) error {
+	const qPost = `
+	INSERT INTO posts
+		(post_id, views, type, title, category, payload, date_created, user_id)
+	VALUES
+		($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	p.log.Printf("%s: %s", "post.helpers.insertPost",
+		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Category, post.Payload,
+			post.DateCreated, post.UserID),
+	)
+
+	if _, err := p.db.ExecContext(ctx, qPost, post.ID, post.Views, post.Type, post.Title,
+		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
+		return errors.Wrap(err, "inserting post")
+	}
+	return nil
+}
+
+// insertVote adds one row to votes database
+func (p PostGQL) insertVote(ctx context.Context, postID string, userID string, vote int) error {
+	const qVote = `
+	INSERT INTO votes
+		(post_id, user_id, vote)
+	VALUES
+		($1, $2, $3)`
+
+	p.log.Printf("%s: %s", "post.helpers.insertVote", database.Log(qVote, postID, userID, vote))
+
+	if _, err := p.db.ExecContext(ctx, qVote, postID, userID, vote); err != nil {
+		return errors.Wrap(err, "inserting Vote")
+	}
+	return nil
 }
 
 // getAuthorByID obtains Author using ID from database
@@ -218,12 +268,12 @@ func (p PostGQL) selectCommentsByPostID(ctx context.Context, ID string) ([]Comme
 	return comments, nil
 }
 
-func (p PostGQL) selectPostsByUser(ctx context.Context, userID string) ([]postDB, error) {
+func (p PostGQL) selectPostsByUser(ctx context.Context, userID string) ([]Info, error) {
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
 	p.log.Printf("%s: %s", "post.helpers.selectPostsByUser", database.Log(qPost))
 
-	var posts []postDB
+	var posts []Info
 	if err := p.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
 		return nil, errors.Wrap(err, "selecting users posts")
 	}
@@ -232,17 +282,17 @@ func (p PostGQL) selectPostsByUser(ctx context.Context, userID string) ([]postDB
 }
 
 // getPostByID obtains post from database using ID
-func (p PostGQL) getPostByID(ctx context.Context, postID string) (postDB, error) {
+func (p PostGQL) getPostByID(ctx context.Context, postID string) (Info, error) {
 	const q = `	SELECT * FROM posts WHERE post_id = $1`
 
 	p.log.Printf("%s: %s", "post.helpers.getPostByID", database.Log(q, postID))
 
-	var post postDB
+	var post Info
 	if err := p.db.GetContext(ctx, &post, q, postID); err != nil {
 		if err == sql.ErrNoRows {
-			return postDB{}, ErrPostNotFound
+			return Info{}, ErrPostNotFound
 		}
-		return postDB{}, errors.Wrap(err, "selecting post by ID")
+		return Info{}, errors.Wrap(err, "selecting post by ID")
 	}
 	return post, nil
 }

@@ -42,6 +42,18 @@ func Init() {
 			},
 		},
 	})
+
+	postTypeEnum := graphql.NewEnum(graphql.EnumConfig{
+		Name: "Type",
+		Values: graphql.EnumValueConfigMap{
+			"LINK": &graphql.EnumValueConfig{
+				Value: "link",
+			},
+			"TEXT": &graphql.EnumValueConfig{
+				Value: "text",
+			},
+		},
+	})
 	authorType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Author",
 		Fields: graphql.Fields{
@@ -96,7 +108,7 @@ func Init() {
 	infoInterface = graphql.NewInterface(graphql.InterfaceConfig{
 		Name: "Info",
 		ResolveType: func(p graphql.ResolveTypeParams) *graphql.Object {
-			post, _ := p.Value.(postDB)
+			post, _ := p.Value.(Info)
 			if post.Type == "url" {
 				return postLinkType
 			}
@@ -303,9 +315,34 @@ func Init() {
 		},
 	})
 
+	var mutationType = graphql.NewObject(graphql.ObjectConfig{
+		Name: "Mutation",
+		Fields: graphql.Fields{
+			"create_post": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: postCreate,
+				Args: graphql.FieldConfigArgument{
+					"type": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(postTypeEnum),
+					},
+					"title": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+					"category": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(categoryEnum),
+					},
+					"payload": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+			},
+		},
+	})
+
 	Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
-		Query: queryType,
-		Types: []graphql.Type{postTextType, postLinkType, authorType, commentType, voteType},
+		Query:    queryType,
+		Mutation: mutationType,
+		Types:    []graphql.Type{postTextType, postLinkType, authorType, commentType, voteType},
 	})
 }
 
