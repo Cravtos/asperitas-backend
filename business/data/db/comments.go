@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
 )
 
@@ -11,7 +10,7 @@ import (
 func (setup DBset) SelectCommentsByPostID(ctx context.Context, ID string) ([]CommentDB, error) {
 	const qComments = `	SELECT * FROM comments WHERE post_id = $1`
 
-	setup.log.Printf("%s: %s", "db.selectCommentsByPostID", database.Log(qComments, ID))
+	//setup.log.Printf("%s: %s", "db.selectCommentsByPostID", database.Log(qComments, ID))
 
 	var comments []CommentDB
 	if err := setup.db.SelectContext(ctx, &comments, qComments, ID); err != nil {
@@ -28,8 +27,8 @@ func (setup DBset) CreateComment(ctx context.Context, nc CommentDB) error {
 	VALUES
 		($1, $2, $3, $4, $5)`
 
-	setup.log.Printf("%s: %s", "db.createComment",
-		database.Log(qComment, nc.ID, nc.PostID, nc.AuthorID, nc.Body, nc.DateCreated))
+	//setup.log.Printf("%s: %s", "db.createComment",
+	//database.Log(qComment, nc.ID, nc.PostID, nc.AuthorID, nc.Body, nc.DateCreated))
 
 	if _, err := setup.db.ExecContext(ctx, qComment, nc.ID, nc.PostID, nc.AuthorID, nc.Body, nc.DateCreated); err != nil {
 		return errors.Wrap(err, "inserting Comment")
@@ -41,7 +40,7 @@ func (setup DBset) CreateComment(ctx context.Context, nc CommentDB) error {
 func (setup DBset) GetCommentByID(ctx context.Context, commentID string) (CommentDB, error) {
 	const qComment = `SELECT * FROM comments WHERE comment_id = $1`
 
-	setup.log.Printf("%s: %s", "db.getCommentByID", database.Log(qComment, commentID))
+	//setup.log.Printf("%s: %s", "db.getCommentByID", database.Log(qComment, commentID))
 
 	var comment CommentDB
 	if err := setup.db.GetContext(ctx, &comment, qComment, commentID); err != nil {
@@ -57,7 +56,7 @@ func (setup DBset) GetCommentByID(ctx context.Context, commentID string) (Commen
 func (setup DBset) DeleteComment(ctx context.Context, commentID string) error {
 	const qDeleteComment = `DELETE FROM comments WHERE comment_id = $1`
 
-	setup.log.Printf("%s: %s", "db.deleteComment", database.Log(qDeleteComment, commentID))
+	//setup.log.Printf("%s: %s", "db.deleteComment", database.Log(qDeleteComment, commentID))
 
 	if _, err := setup.db.ExecContext(ctx, qDeleteComment, commentID); err != nil {
 		if err == sql.ErrNoRows {

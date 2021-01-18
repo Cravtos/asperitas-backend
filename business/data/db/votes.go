@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
 )
 
@@ -10,7 +9,7 @@ import (
 func (setup DBset) SelectVotesByPostID(ctx context.Context, ID string) ([]VoteDB, error) {
 	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
-	setup.log.Printf("%s: %s", "db.selectVotesByPostID", database.Log(qVotes, ID))
+	//setup.log.Printf("%s: %s", "db.selectVotesByPostID", database.Log(qVotes, ID))
 
 	var votes []VoteDB
 	if err := setup.db.SelectContext(ctx, &votes, qVotes, ID); err != nil {
@@ -23,7 +22,7 @@ func (setup DBset) SelectVotesByPostID(ctx context.Context, ID string) ([]VoteDB
 func (setup DBset) InsertVote(ctx context.Context, postID string, userID string, vote int) error {
 	const qVote = `INSERT INTO votes (post_id, user_id, vote) VALUES ($1, $2, $3)`
 
-	setup.log.Printf("%s: %s", "db.insertVote", database.Log(qVote, postID, userID, vote))
+	//setup.log.Printf("%s: %s", "db.insertVote", database.Log(qVote, postID, userID, vote))
 
 	if _, err := setup.db.ExecContext(ctx, qVote, postID, userID, vote); err != nil {
 		return errors.Wrap(err, "inserting Vote")
@@ -36,7 +35,7 @@ func (setup DBset) InsertVote(ctx context.Context, postID string, userID string,
 func (setup DBset) CheckVote(ctx context.Context, postID string, userID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM votes WHERE post_id = $1 AND user_id = $2`
 
-	setup.log.Printf("%s: %s", "db.checkVote", database.Log(qCheckExist, postID, userID))
+	//setup.log.Printf("%s: %s", "db.checkVote", database.Log(qCheckExist, postID, userID))
 
 	var exist int
 	if err := setup.db.GetContext(ctx, &exist, qCheckExist, postID, userID); err != nil {
@@ -53,7 +52,7 @@ func (setup DBset) CheckVote(ctx context.Context, postID string, userID string) 
 func (setup DBset) UpdateVote(ctx context.Context, postID string, userID string, vote int) error {
 	const qUpdateVote = `UPDATE votes SET vote = $3 WHERE post_id = $1 AND user_id = $2`
 
-	setup.log.Printf("%s: %s", "db.updateVote", database.Log(qUpdateVote, postID, userID, vote))
+	//setup.log.Printf("%s: %s", "db.updateVote", database.Log(qUpdateVote, postID, userID, vote))
 
 	if _, err := setup.db.ExecContext(ctx, qUpdateVote, postID, userID, vote); err != nil {
 		return errors.Wrap(err, "updating vote")
@@ -65,7 +64,7 @@ func (setup DBset) UpdateVote(ctx context.Context, postID string, userID string,
 func (setup DBset) DeleteVote(ctx context.Context, postID string, userID string) error {
 	const qDeleteVote = `DELETE FROM votes WHERE post_id = $1 AND user_id = $2`
 
-	setup.log.Printf("%s: %s", "db.deleteVote", database.Log(qDeleteVote, postID, userID))
+	//setup.log.Printf("%s: %s", "db.deleteVote", database.Log(qDeleteVote, postID, userID))
 
 	if _, err := setup.db.ExecContext(ctx, qDeleteVote, postID, userID); err != nil {
 		return errors.Wrapf(err, "deleting vote on %s from %s", postID, userID)

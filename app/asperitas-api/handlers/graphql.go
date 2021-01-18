@@ -33,5 +33,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	result := graphql.Do(params)
+	//todo do error handling
+
 	return web.Respond(ctx, w, result, http.StatusOK)
 }

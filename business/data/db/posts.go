@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
 )
 
@@ -24,7 +23,7 @@ func (setup DBset) ObtainPosts(ctx context.Context, category, userID string) ([]
 func (setup DBset) SelectPostsByCategoryAndUser(ctx context.Context, category string, userID string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1 and user_id = $2`
 
-	setup.log.Printf("%s: %s", "db.selectPostsByCategoryAndUser", database.Log(qPost, category, userID))
+	//setup.log.Printf("%s: %s", "db.selectPostsByCategoryAndUser", database.Log(qPost, category, userID))
 
 	var posts []PostDB
 	if err := setup.db.SelectContext(ctx, &posts, qPost, category, userID); err != nil {
@@ -37,7 +36,7 @@ func (setup DBset) SelectPostsByCategoryAndUser(ctx context.Context, category st
 func (setup DBset) SelectAllPosts(ctx context.Context) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts`
 
-	setup.log.Printf("%s: %s", "db.selectAllPosts", database.Log(qPost))
+	//setup.log.Printf("%s: %s", "db.selectAllPosts", database.Log(qPost))
 
 	var posts []PostDB
 	if err := setup.db.SelectContext(ctx, &posts, qPost); err != nil {
@@ -51,7 +50,7 @@ func (setup DBset) SelectAllPosts(ctx context.Context) ([]PostDB, error) {
 func (setup DBset) SelectPostsByCategory(ctx context.Context, category string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1`
 
-	setup.log.Printf("%s: %s", "db.selectPostsByCategory", database.Log(qPost, category))
+	//setup.log.Printf("%s: %s", "db.selectPostsByCategory", database.Log(qPost, category))
 
 	var posts []PostDB
 	if err := setup.db.SelectContext(ctx, &posts, qPost, category); err != nil {
@@ -65,7 +64,7 @@ func (setup DBset) SelectPostsByCategory(ctx context.Context, category string) (
 func (setup DBset) SelectPostsByUser(ctx context.Context, userID string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
-	setup.log.Printf("%s: %s", "db.selectPostsByUser", database.Log(qPost, userID))
+	//setup.log.Printf("%s: %s", "db.selectPostsByUser", database.Log(qPost, userID))
 
 	var posts []PostDB
 	if err := setup.db.SelectContext(ctx, &posts, qPost, userID); err != nil {
@@ -79,7 +78,7 @@ func (setup DBset) SelectPostsByUser(ctx context.Context, userID string) ([]Post
 func (setup DBset) GetPostByID(ctx context.Context, postID string) (PostDB, error) {
 	const q = `	SELECT * FROM posts WHERE post_id = $1`
 
-	setup.log.Printf("%s: %s", "db.getPostByID", database.Log(q, postID))
+	//setup.log.Printf("%s: %s", "db.getPostByID", database.Log(q, postID))
 
 	var post PostDB
 	if err := setup.db.GetContext(ctx, &post, q, postID); err != nil {
@@ -97,7 +96,7 @@ func (setup DBset) GetPostByID(ctx context.Context, postID string) (PostDB, erro
 func (setup DBset) CheckPost(ctx context.Context, postID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM posts WHERE post_id = $1`
 
-	setup.log.Printf("%s: %s", "db.checkPost", database.Log(qCheckExist, postID))
+	//setup.log.Printf("%s: %s", "db.checkPost", database.Log(qCheckExist, postID))
 
 	var exist int
 	if err := setup.db.GetContext(ctx, &exist, qCheckExist, postID); err != nil {
@@ -118,10 +117,10 @@ func (setup DBset) InsertPost(ctx context.Context, post PostDB) error {
 	VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8)`
 
-	setup.log.Printf("%s: %s", "db.insertPost",
-		database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Category, post.Payload,
-			post.DateCreated, post.UserID),
-	)
+	//setup.log.Printf("%s: %s", "db.insertPost",
+	//	database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Category, post.Payload,
+	//		post.DateCreated, post.UserID),
+	//)
 
 	if _, err := setup.db.ExecContext(ctx, qPost, post.ID, post.Views, post.Type, post.Title,
 		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
@@ -133,19 +132,19 @@ func (setup DBset) InsertPost(ctx context.Context, post PostDB) error {
 // DeletePost deletes post with all its votes and comments
 func (setup DBset) DeletePost(ctx context.Context, postID string) error {
 	const qDeleteVotes = `DELETE FROM votes WHERE post_id = $1`
-	setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeleteVotes, postID))
+	//setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeleteVotes, postID))
 	if _, err := setup.db.ExecContext(ctx, qDeleteVotes, postID); err != nil {
 		return errors.Wrapf(err, "deleting votes %s", postID)
 	}
 
 	const qDeleteComments = `DELETE FROM comments WHERE post_id = $1`
-	setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeleteComments, postID))
+	//setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeleteComments, postID))
 	if _, err := setup.db.ExecContext(ctx, qDeleteComments, postID); err != nil {
 		return errors.Wrapf(err, "deleting comments %s", postID)
 	}
 
 	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
-	setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeletePost, postID))
+	//setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeletePost, postID))
 	if _, err := setup.db.ExecContext(ctx, qDeletePost, postID); err != nil {
 		return errors.Wrapf(err, "deleting post %s", postID)
 	}
