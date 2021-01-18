@@ -76,7 +76,7 @@ func API(
 	gqlg := PostGroupGQL{
 		P:      postgql.NewPostGQL(log, db),
 		schema: gqlschema,
-		a:      a,
+		auth:   a,
 	}
 
 	app.HandleGraphQL(http.MethodPost, "/api/graphql", gqlg.handle)

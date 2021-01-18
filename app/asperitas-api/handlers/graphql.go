@@ -13,7 +13,7 @@ import (
 type PostGroupGQL struct {
 	P      postgql.PostGQL
 	schema graphql.Schema
-	a      *auth.Auth
+	auth   *auth.Auth
 }
 
 func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
@@ -21,7 +21,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 	opts := gql.NewRequestOptions(r)
 
 	ctx = context.WithValue(ctx, postgql.KeyPostGQL, gqlg.P)
-	ctx = context.WithValue(ctx, postgql.KeyAuth, gqlg.a)
+	ctx = context.WithValue(ctx, postgql.KeyAuth, gqlg.auth)
 	ctx = context.WithValue(ctx, postgql.KeyAuthHeader, r.Header.Get("authorization"))
 	// execute graphql query
 	params := graphql.Params{

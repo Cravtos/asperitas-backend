@@ -4,29 +4,16 @@ import (
 	"time"
 )
 
-// postDB represents an individual post in database. (with additional field "score" counted using votes table)
-type postDB struct {
-	ID          string    `db:"post_id"`
-	Score       int       `db:"score"`
-	Views       int       `db:"views"`
-	Type        string    `db:"type"`
-	Title       string    `db:"title"`
-	Category    string    `db:"category"`
-	Payload     string    `db:"payload"`
-	DateCreated time.Time `db:"date_created"`
-	UserID      string    `db:"user_id"`
-}
-
 // Author represents info about author
 type Author struct {
-	Username string `db:"name" json:"username"`
-	ID       string `db:"user_id" json:"id"`
+	Username string `json:"username"`
+	ID       string `json:"id"`
 }
 
 // Vote represents info about user vote.
 type Vote struct {
-	User string `db:"user_id" json:"user"`
-	Vote int    `db:"vote" json:"vote"`
+	User string `json:"user"`
+	Vote int    `json:"vote"`
 }
 
 // Info generalizes text and link posts
@@ -77,7 +64,7 @@ type Comment struct {
 	ID          string    `json:"id"`
 }
 
-// NewPost is what we require from users when adding a Post.
+// NewPost is what we require from users when adding a PostSet.
 type NewPost struct {
 	Type     string `json:"type" default:"link"`
 	Title    string `json:"title" validate:"required"`
