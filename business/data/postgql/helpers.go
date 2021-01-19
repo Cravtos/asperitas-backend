@@ -76,26 +76,28 @@ func convertUser(userDB db.UserDB) Author {
 func parseCatAndUser(category interface{}, userID interface{}) (string, string) {
 	if category == nil && userID == nil {
 		return "all", ""
-	} else if category == nil {
-		if user, ok := userID.(string); ok {
-			return "all", user
-		}
-		return "all", ""
-	} else if userID == nil {
-		if cat, ok := category.(string); ok {
-			return cat, ""
-		}
-		return "all", ""
-	} else {
-		if cat, ok := category.(string); ok {
-			if user, ok := userID.(string); ok {
-				return cat, user
-			}
-			return cat, ""
-		}
+	}
+	if category == nil {
 		if user, ok := userID.(string); ok {
 			return "all", user
 		}
 		return "all", ""
 	}
+	if userID == nil {
+		if cat, ok := category.(string); ok {
+			return cat, ""
+		}
+		return "all", ""
+	}
+	if cat, ok := category.(string); ok {
+		if user, ok := userID.(string); ok {
+			return cat, user
+		}
+		return cat, ""
+	}
+	if user, ok := userID.(string); ok {
+		return "all", user
+	}
+	return "all", ""
+
 }

@@ -13,8 +13,11 @@ var (
 	//ErrCommentNotFound is used when a specific Comment is requested but does not exist
 	ErrCommentNotFound = errors.New("comment not found")
 
-	//ErrVoteCommentNotFound is used when a specific Vote is requested but does not exist
+	//ErrVoteNotFound is used when a specific Vote is requested but does not exist
 	ErrVoteNotFound = errors.New("vote not found")
+
+	//ErrUserNotFound is used when a specific User is requested but does not exist
+	ErrUserNotFound = errors.New("user not found")
 )
 
 type DBset struct {

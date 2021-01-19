@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"github.com/pkg/errors"
 )
 
@@ -13,7 +14,10 @@ func (setup DBset) GetUserByID(ctx context.Context, ID string) (UserDB, error) {
 
 	var user UserDB
 	if err := setup.db.GetContext(ctx, &user, qAuthor, ID); err != nil {
-		return UserDB{}, errors.Wrap(err, "selecting user")
+		if err == sql.ErrNoRows {
+			return UserDB{}, ErrUserNotFound
+		}
+		return UserDB{}, err
 	}
 	return user, nil
 }

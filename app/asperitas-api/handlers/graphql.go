@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/postgql"
+	"github.com/cravtos/asperitas-backend/foundation/gql"
 	"github.com/cravtos/asperitas-backend/foundation/web"
-	"github.com/cravtos/asperitas-backend/foundation/web/gql"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
-	"log"
 	"net/http"
 )
 
@@ -35,8 +35,27 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	result := graphql.Do(params)
-	//todo do error handling
-	_, ok := result.Errors[0].OriginalError().(*gqlerrors.Error)
-	log.Printf("errors %+v\n", ok)
-	return web.Respond(ctx, w, result, http.StatusOK)
+
+	errs := make([]error, 0)
+	for i := range result.Errors {
+		err, ok := result.Errors[i].OriginalError().(*gqlerrors.Error)
+		if ok {
+			err2 := err.OriginalError
+			switch err2.(type) {
+			case *web.Shutdown:
+				return err
+			case *postgql.PrivateError:
+				errs = append(errs, err2)
+				result.Errors[i].Message = "Internal server error"
+				result.Errors[i].Locations = nil
+				result.Errors[i].Path = nil
+			default:
+				fmt.Println("hey  ", err)
+			}
+		}
+	}
+	return web.RespondGQL(ctx, w, &web.ResponseGQL{
+		Errors: errs,
+		Data:   result,
+	})
 }
