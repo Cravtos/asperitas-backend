@@ -382,3 +382,297 @@ func postCreate(p graphql.ResolveParams) (interface{}, error) {
 	p.Args["post_id"] = newPost.ID
 	return post(p)
 }
+
+func postDelete(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+
+	postDB, err := dbs.GetPostByID(p.Context, postID)
+	if err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	if claims.User.ID != postDB.UserID {
+		return nil, ErrForbidden
+	}
+
+	if err := dbs.DeletePost(p.Context, postID); err != nil {
+		return nil, newPrivateError(err.Error())
+	}
+	return post(p)
+}
+
+func commentCreate(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	v, ok := p.Context.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return nil, web.NewShutdownError("web value missing from context")
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+
+	if err := dbs.CheckPost(p.Context, postID); err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	ncDB := db.CommentDB{
+		DateCreated: v.Now,
+		PostID:      postID,
+		AuthorID:    claims.User.ID,
+		Body:        p.Args["text"].(string),
+		ID:          uuid.New().String(),
+	}
+
+	if err := dbs.CreateComment(p.Context, ncDB); err != nil {
+		return nil, newPrivateError(err.Error())
+	}
+	return post(p)
+}
+
+func commentDelete(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+	commentID := p.Args["comment_id"].(string)
+	if _, err := uuid.Parse(commentID); err != nil {
+		return nil, ErrInvalidCommentID
+	}
+
+	if err := dbs.CheckPost(p.Context, postID); err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	commentDB, err := dbs.GetCommentByID(p.Context, commentID)
+	if err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	if claims.User.ID != commentDB.AuthorID {
+		return nil, ErrForbidden
+	}
+
+	if err := dbs.DeleteComment(p.Context, commentID); err != nil {
+		return nil, newPrivateError(err.Error())
+	}
+
+	return post(p)
+}
+
+func upvote(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+	if err := dbs.CheckPost(p.Context, postID); err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
+		if err != db.ErrVoteNotFound {
+			return nil, newPrivateError(err.Error())
+		}
+		if err := dbs.InsertVote(p.Context, postID, claims.User.ID, 1); err != nil {
+			return nil, newPrivateError(err.Error())
+		}
+	} else {
+		if err := dbs.UpdateVote(p.Context, postID, claims.User.ID, 1); err != nil {
+			return nil, newPrivateError(err.Error())
+		}
+	}
+
+	return post(p)
+}
+
+func downvote(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+	if err := dbs.CheckPost(p.Context, postID); err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
+		if err != db.ErrVoteNotFound {
+			return nil, newPrivateError(err.Error())
+		}
+		if err := dbs.InsertVote(p.Context, postID, claims.User.ID, 0); err != nil {
+			return nil, newPrivateError(err.Error())
+		}
+	} else {
+		if err := dbs.UpdateVote(p.Context, postID, claims.User.ID, 0); err != nil {
+			return nil, newPrivateError(err.Error())
+		}
+	}
+
+	return post(p)
+}
+
+func unvote(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	postID := p.Args["post_id"].(string)
+	if _, err := uuid.Parse(postID); err != nil {
+		return nil, ErrInvalidPostID
+	}
+	if err := dbs.CheckPost(p.Context, postID); err != nil {
+		if err == db.ErrPostNotFound {
+			return nil, newPublicError(err.Error())
+		}
+		return nil, newPrivateError(err.Error())
+	}
+
+	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
+		if err != db.ErrVoteNotFound {
+			return nil, newPrivateError(err.Error())
+		} else {
+			return post(p)
+		}
+	}
+	if err := dbs.DeleteVote(p.Context, postID, claims.User.ID); err != nil {
+		return nil, newPrivateError(err.Error())
+	}
+
+	return post(p)
+}

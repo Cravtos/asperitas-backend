@@ -7,14 +7,14 @@ import (
 )
 
 type ResponseGQL struct {
-	SendingError error
-	Errors       []error
-	Data         *graphql.Result
+	SendingError  error
+	PrivateErrors []error
+	Data          *graphql.Result
 }
 
 func (err ResponseGQL) Error() string {
 	str := ""
-	for _, s := range err.Errors {
+	for _, s := range err.PrivateErrors {
 		str += s.Error()
 		str += "\n"
 	}

@@ -336,6 +336,66 @@ func Init() {
 					},
 				},
 			},
+			"delete_post": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: postDelete,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
+			"create_comment": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: commentCreate,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+					"text": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+			},
+			"delete_comment": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: commentDelete,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{ //I don`t know why we ask for post_id
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+					"comment_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
+			"upvote": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: upvote,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
+			"downvote": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: downvote,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
+			"unvote": &graphql.Field{
+				Type:    infoInterface,
+				Resolve: unvote,
+				Args: graphql.FieldConfigArgument{
+					"post_id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
 		},
 	})
 

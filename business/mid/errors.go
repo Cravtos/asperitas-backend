@@ -21,8 +21,8 @@ func Errors(log *log.Logger) web.Middleware {
 			// Run the next handler and catch any propagated error.
 			if err := handler(ctx, w, r); err != nil {
 				if web.IsErrorResponseGQL(err) {
-					for _, er := range err.(*web.ResponseGQL).Errors {
-						log.Printf("ERROR: executing gql %v\n", er)
+					for _, er := range err.(*web.ResponseGQL).PrivateErrors {
+						log.Printf("ERROR: executing utilgql %v\n", er)
 					}
 					if er := err.(*web.ResponseGQL).SendingError; er != nil {
 						// Log the error.

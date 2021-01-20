@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/postgql"
-	"github.com/cravtos/asperitas-backend/foundation/gql"
+	"github.com/cravtos/asperitas-backend/foundation/utilgql"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
@@ -20,7 +20,7 @@ type PostGroupGQL struct {
 
 func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	// get query
-	opts := gql.NewRequestOptions(r)
+	opts := utilgql.NewRequestOptions(r)
 
 	ctx = context.WithValue(ctx, postgql.KeyPostGQL, gqlg.P)
 	ctx = context.WithValue(ctx, postgql.KeyAuth, gqlg.auth)
@@ -36,7 +36,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 
 	result := graphql.Do(params)
 
-	errs := make([]error, 0)
+	privateErrs := make([]error, 0)
 	for i := range result.Errors {
 		err, ok := result.Errors[i].OriginalError().(*gqlerrors.Error)
 		if ok {
@@ -45,7 +45,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 			case *web.Shutdown:
 				return err
 			case *postgql.PrivateError:
-				errs = append(errs, err2)
+				privateErrs = append(privateErrs, err2)
 				result.Errors[i].Message = "Internal server error"
 				result.Errors[i].Locations = nil
 				result.Errors[i].Path = nil
@@ -55,7 +55,7 @@ func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *
 		}
 	}
 	return web.RespondGQL(ctx, w, &web.ResponseGQL{
-		Errors: errs,
-		Data:   result,
+		PrivateErrors: privateErrs,
+		Data:          result,
 	})
 }
