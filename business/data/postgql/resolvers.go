@@ -3,9 +3,12 @@ package postgql
 import (
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/db"
+	"github.com/cravtos/asperitas-backend/business/data/user"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/google/uuid"
 	"github.com/graphql-go/graphql"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 //todo: move out authentication
@@ -675,4 +678,131 @@ func unvote(p graphql.ResolveParams) (interface{}, error) {
 	}
 
 	return post(p)
+}
+
+func register(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+
+	v, ok := p.Context.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return nil, web.NewShutdownError("web values missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(p.Args["password"].(string)), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, web.NewShutdownError("generating password hash: " + err.Error())
+	}
+
+	usr := db.FullUserDB{
+		ID:           uuid.New().String(),
+		Name:         p.Args["name"].(string),
+		PasswordHash: hash,
+		DateCreated:  v.Now,
+	}
+
+	dbs := db.NewDBset(a.log, a.db)
+
+	dbs.CreateUser(p.Context, usr)
+
+	claims, err := user.New(a.log, a.db).Authenticate(p.Context, usr.Name, p.Args["password"].(string), v.Now)
+	if err != nil {
+		switch err {
+		case user.ErrAuthenticationFailure:
+			return nil, newPublicError(err.Error())
+		default:
+			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate user with name %s", usr.Name).Error())
+		}
+	}
+
+	// todo: consider HS256
+	kid := au.GetKID()
+	Token, err := au.GenerateToken(kid, claims)
+	if err != nil {
+		return nil, newPrivateError(errors.Wrapf(err, "generating token").Error())
+	}
+
+	return auth.Data{
+		Token: Token,
+		User: auth.User{
+			Username: usr.Name,
+			ID:       usr.ID,
+		},
+	}, nil
+}
+
+func signIn(p graphql.ResolveParams) (interface{}, error) {
+	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
+	if !ok {
+		return nil, web.NewShutdownError("postGQL missing from context")
+	}
+	v, ok := p.Context.Value(web.KeyValues).(*web.Values)
+	if !ok {
+		return nil, web.NewShutdownError("web values missing from context")
+	}
+
+	au, ok := p.Context.Value(KeyAuth).(*auth.Auth)
+	if !ok {
+		return nil, web.NewShutdownError("auth missing from context")
+	}
+	Name := p.Args["name"].(string)
+	claims, err := user.New(a.log, a.db).Authenticate(p.Context, Name, p.Args["password"].(string), v.Now)
+	if err != nil {
+		switch err {
+		case user.ErrAuthenticationFailure:
+			return nil, newPublicError(err.Error())
+		default:
+			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate user with name %s", Name).Error())
+		}
+	}
+
+	// todo: consider HS256
+	kid := au.GetKID()
+	Token, err := au.GenerateToken(kid, claims)
+	if err != nil {
+		return nil, newPrivateError(errors.Wrapf(err, "generating token").Error())
+	}
+
+	return auth.Data{
+		Token: Token,
+		User: auth.User{
+			Username: claims.User.Username,
+			ID:       claims.User.ID,
+		},
+	}, nil
+}
+
+func userID(p graphql.ResolveParams) (interface{}, error) {
+	if src, ok := p.Source.(auth.User); ok {
+		return src.ID, nil
+	}
+	return nil, web.NewShutdownError("auth.User missing from context")
+}
+
+func username(p graphql.ResolveParams) (interface{}, error) {
+	if src, ok := p.Source.(auth.User); ok {
+		return src.Username, nil
+	}
+	return nil, web.NewShutdownError("auth.User missing from context")
+}
+
+func authUser(p graphql.ResolveParams) (interface{}, error) {
+	if src, ok := p.Source.(auth.Data); ok {
+		return src.User, nil
+	}
+	return nil, web.NewShutdownError("auth.Data missing from context")
+}
+
+func token(p graphql.ResolveParams) (interface{}, error) {
+	if src, ok := p.Source.(auth.Data); ok {
+		return src.Token, nil
+	}
+	return nil, web.NewShutdownError("auth.Data missing from context")
 }

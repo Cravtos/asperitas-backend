@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"database/sql"
+	"github.com/cravtos/asperitas-backend/business/data/db"
 	"log"
 	"time"
 
@@ -52,28 +53,18 @@ func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, erro
 		return Info{}, errors.Wrap(err, "generating password hash")
 	}
 
-	usr := Info{
+	usr := db.FullUserDB{
 		ID:           uuid.New().String(),
 		Name:         nu.Name,
 		PasswordHash: hash,
 		DateCreated:  now,
 	}
 
-	const q = `
-	INSERT INTO users
-		(user_id, name, password_hash, date_created)
-	VALUES
-		($1, $2, $3, $4)`
+	dbs := db.NewDBset(u.log, u.db)
 
-	u.log.Printf("%s: %s", "user.Create",
-		database.Log(q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated),
-	)
+	dbs.CreateUser(ctx, usr)
 
-	if _, err = u.db.ExecContext(ctx, q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated); err != nil {
-		return Info{}, errors.Wrap(err, "inserting user")
-	}
-
-	return usr, nil
+	return convertUserDBToInfo(usr), nil
 }
 
 // Delete removes a user from the database.
@@ -202,24 +193,13 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 // used to generate a token for future authentication.
 func (u User) Authenticate(ctx context.Context, name, password string, now time.Time) (auth.Claims, error) {
 
-	const q = `
-	SELECT
-		*
-	FROM
-		users
-	WHERE
-		name = $1`
+	dbs := db.NewDBset(u.log, u.db)
 
-	u.log.Printf("%s: %s", "user.Authenticate",
-		database.Log(q, name),
-	)
-
-	var usr Info
-	if err := u.db.GetContext(ctx, &usr, q, name); err != nil {
-
+	usrDB, err := dbs.GetFullUserByName(ctx, name)
+	if err != nil {
 		// Normally we would return ErrNotFound in this scenario but we do not want
 		// to leak to an unauthenticated user which emails are in the system.
-		if err == sql.ErrNoRows {
+		if err == db.ErrUserNotFound {
 			return auth.Claims{}, ErrAuthenticationFailure
 		}
 
@@ -228,7 +208,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 
 	// Compare the provided password with the saved hash. Use the bcrypt
 	// comparison function so it is cryptographically secure.
-	if err := bcrypt.CompareHashAndPassword(usr.PasswordHash, []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword(usrDB.PasswordHash, []byte(password)); err != nil {
 		return auth.Claims{}, ErrAuthenticationFailure
 	}
 
@@ -240,8 +220,8 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 			IssuedAt:  now.Unix(),
 		},
 		User: auth.User{
-			Username: usr.Name,
-			ID:       usr.ID,
+			Username: usrDB.Name,
+			ID:       usrDB.ID,
 		},
 	}
 

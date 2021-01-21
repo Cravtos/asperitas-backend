@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/pkg/errors"
 )
 
@@ -46,4 +47,37 @@ func (setup DBset) SelectUsersByName(ctx context.Context, name string) ([]UserDB
 		return nil, errors.Wrap(err, "selecting users")
 	}
 	return users, nil
+}
+
+func (setup DBset) CreateUser(ctx context.Context, usr FullUserDB) error {
+	const q = `
+	INSERT INTO users
+		(user_id, name, password_hash, date_created)
+	VALUES
+		($1, $2, $3, $4)`
+
+	setup.log.Printf("%s: %s", "user.Create",
+		database.Log(q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated),
+	)
+
+	if _, err := setup.db.ExecContext(ctx, q, usr.ID, usr.Name, usr.PasswordHash, usr.DateCreated); err != nil {
+		return errors.Wrap(err, "inserting user")
+	}
+	return nil
+}
+
+// GetFullUserByName returns first found User with a given name
+func (setup DBset) GetFullUserByName(ctx context.Context, name string) (FullUserDB, error) {
+	const qAuthor = `SELECT * FROM users WHERE name = $1`
+
+	//setup.log.Printf("%s: %s", "db.getAuthorByID", database.Log(qAuthor, name))
+
+	var users []FullUserDB
+	if err := setup.db.SelectContext(ctx, &users, qAuthor, name); err != nil {
+		if err == sql.ErrNoRows {
+			return FullUserDB{}, ErrUserNotFound
+		}
+		return FullUserDB{}, errors.Wrap(err, "selecting users")
+	}
+	return users[0], nil
 }

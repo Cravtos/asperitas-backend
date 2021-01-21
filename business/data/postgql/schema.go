@@ -13,6 +13,8 @@ var (
 	authorType    *graphql.Object
 	voteType      *graphql.Object
 	commentType   *graphql.Object
+	authType      *graphql.Object
+	userType      *graphql.Object
 )
 
 func Init() {
@@ -54,6 +56,7 @@ func Init() {
 			},
 		},
 	})
+
 	authorType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Author",
 		Fields: graphql.Fields{
@@ -315,6 +318,34 @@ func Init() {
 		},
 	})
 
+	userType = graphql.NewObject(graphql.ObjectConfig{
+		Name: "Auth",
+		Fields: graphql.Fields{
+			"username": &graphql.Field{
+				Type:    graphql.String,
+				Resolve: username,
+			},
+			"user_id": &graphql.Field{
+				Type:    userType,
+				Resolve: userID,
+			},
+		},
+	})
+
+	authType = graphql.NewObject(graphql.ObjectConfig{
+		Name: "Auth",
+		Fields: graphql.Fields{
+			"token": &graphql.Field{
+				Type:    graphql.String,
+				Resolve: token,
+			},
+			"user": &graphql.Field{
+				Type:    userType,
+				Resolve: authUser,
+			},
+		},
+	})
+
 	var mutationType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Mutation",
 		Fields: graphql.Fields{
@@ -393,6 +424,30 @@ func Init() {
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.ID),
+					},
+				},
+			},
+			"register": &graphql.Field{
+				Type:    authType,
+				Resolve: register,
+				Args: graphql.FieldConfigArgument{
+					"name": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+					"password": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+			},
+			"sign_in": &graphql.Field{
+				Type:    authType,
+				Resolve: signIn,
+				Args: graphql.FieldConfigArgument{
+					"name": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+					"password": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
 					},
 				},
 			},

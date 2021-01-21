@@ -16,6 +16,11 @@ var (
 	ErrExpectedBearer = errors.New("expected authorization header format: bearer <token>")
 )
 
+type Data struct {
+	Token string
+	User  User
+}
+
 type User struct {
 	Username string `json:"username"`
 	ID       string `json:"id"`

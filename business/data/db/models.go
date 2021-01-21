@@ -46,3 +46,10 @@ type CommentWithUserDB struct {
 	Body        string    `db:"body"`
 	ID          string    `db:"comment_id"`
 }
+
+type FullUserDB struct {
+	ID           string    `db:"user_id"`
+	Name         string    `db:"name"`
+	PasswordHash []byte    `db:"password_hash"`
+	DateCreated  time.Time `db:"date_created"`
+}
