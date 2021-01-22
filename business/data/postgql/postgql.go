@@ -1,19 +1,20 @@
 package postgql
 
 import (
+	"errors"
 	"github.com/jmoiron/sqlx"
 	"log"
 )
 
 var (
 	// ErrInvalidPostID occurs when an ID is not in a valid form.
-	ErrInvalidPostID = newPublicError("invalid postRes id")
+	ErrInvalidPostID = newPublicError(errors.New("invalid postRes id"))
 
 	// ErrForbidden occurs when a users tries to do something that is forbidden to them according to our access control policies.
-	ErrForbidden = newPublicError("attempted action is not allowed")
+	ErrForbidden = newPublicError(errors.New("attempted action is not allowed"))
 
 	// ErrInvalidCommentID occurs when an ID is not in a valid form.
-	ErrInvalidCommentID = newPublicError("invalid comment id")
+	ErrInvalidCommentID = newPublicError(errors.New("invalid comment id"))
 )
 
 // ctxKey represents the type of value for the context key.
