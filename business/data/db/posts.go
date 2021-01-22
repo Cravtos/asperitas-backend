@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//ObtainPosts returns all posts with a given category from a given user
+//ObtainPosts returns all posts with a given category from a given users
 func (setup DBset) ObtainPosts(ctx context.Context, category, userID string) ([]PostDB, error) {
 	if category == "all" && userID == "" {
 		return setup.SelectAllPosts(ctx)
@@ -19,7 +19,7 @@ func (setup DBset) ObtainPosts(ctx context.Context, category, userID string) ([]
 	}
 }
 
-// SelectPostsByCategoryAndUser returns all posts with a given category from user stored in database
+// SelectPostsByCategoryAndUser returns all posts with a given category from users stored in database
 func (setup DBset) SelectPostsByCategoryAndUser(ctx context.Context, category string, userID string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE category = $1 and user_id = $2`
 
@@ -60,7 +60,7 @@ func (setup DBset) SelectPostsByCategory(ctx context.Context, category string) (
 	return posts, nil
 }
 
-// SelectPostsByUser returns all posts from user stored in database
+// SelectPostsByUser returns all posts from users stored in database
 func (setup DBset) SelectPostsByUser(ctx context.Context, userID string) ([]PostDB, error) {
 	const qPost = `SELECT * FROM posts WHERE user_id = $1`
 
@@ -74,7 +74,7 @@ func (setup DBset) SelectPostsByUser(ctx context.Context, userID string) ([]Post
 	return posts, nil
 }
 
-// GetPostByID obtains post from database using ID
+// GetPostByID obtains posts from database using ID
 func (setup DBset) GetPostByID(ctx context.Context, postID string) (PostDB, error) {
 	const q = `	SELECT * FROM posts WHERE post_id = $1`
 
@@ -85,14 +85,14 @@ func (setup DBset) GetPostByID(ctx context.Context, postID string) (PostDB, erro
 		if err == sql.ErrNoRows {
 			return PostDB{}, ErrPostNotFound
 		}
-		return PostDB{}, errors.Wrap(err, "selecting post by ID")
+		return PostDB{}, errors.Wrap(err, "selecting posts by ID")
 	}
 
 	return post, nil
 }
 
-// CheckPost shows whether post with given ID exist in database or not.
-// It returns an error if post doesn't exist.
+// CheckPost shows whether posts with given ID exist in database or not.
+// It returns an error if posts doesn't exist.
 func (setup DBset) CheckPost(ctx context.Context, postID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM posts WHERE post_id = $1`
 
@@ -100,7 +100,7 @@ func (setup DBset) CheckPost(ctx context.Context, postID string) error {
 
 	var exist int
 	if err := setup.db.GetContext(ctx, &exist, qCheckExist, postID); err != nil {
-		return errors.Wrap(err, "checking if post exists")
+		return errors.Wrap(err, "checking if posts exists")
 	}
 
 	if exist == 0 {
@@ -118,18 +118,18 @@ func (setup DBset) InsertPost(ctx context.Context, post PostDB) error {
 		($1, $2, $3, $4, $5, $6, $7, $8)`
 
 	//setup.log.Printf("%s: %s", "db.insertPost",
-	//	database.Log(qPost, post.ID, post.Views, post.Type, post.Title, post.Category, post.Payload,
-	//		post.DateCreated, post.UserID),
+	//	database.Log(qPost, posts.ID, posts.Views, posts.Type, posts.Title, posts.Category, posts.Payload,
+	//		posts.DateCreated, posts.UserID),
 	//)
 
 	if _, err := setup.db.ExecContext(ctx, qPost, post.ID, post.Views, post.Type, post.Title,
 		post.Category, post.Payload, post.DateCreated, post.UserID); err != nil {
-		return errors.Wrap(err, "inserting post")
+		return errors.Wrap(err, "inserting posts")
 	}
 	return nil
 }
 
-// DeletePost deletes post with all its votes and comments
+// DeletePost deletes posts with all its votes and comments
 func (setup DBset) DeletePost(ctx context.Context, postID string) error {
 	const qDeleteVotes = `DELETE FROM votes WHERE post_id = $1`
 	//setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeleteVotes, postID))
@@ -146,7 +146,7 @@ func (setup DBset) DeletePost(ctx context.Context, postID string) error {
 	const qDeletePost = `DELETE FROM posts WHERE post_id = $1`
 	//setup.log.Printf("%s: %s", "db.deletePost", database.Log(qDeletePost, postID))
 	if _, err := setup.db.ExecContext(ctx, qDeletePost, postID); err != nil {
-		return errors.Wrapf(err, "deleting post %s", postID)
+		return errors.Wrapf(err, "deleting posts %s", postID)
 	}
 
 	return nil

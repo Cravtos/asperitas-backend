@@ -2,29 +2,22 @@ package postgql
 
 import (
 	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/business/data/db"
-	"github.com/cravtos/asperitas-backend/business/data/user"
+	"github.com/cravtos/asperitas-backend/business/data/posts"
+	"github.com/cravtos/asperitas-backend/business/data/users"
 	"github.com/cravtos/asperitas-backend/foundation/web"
-	"github.com/google/uuid"
 	"github.com/graphql-go/graphql"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
-//todo: move out authentication
-func Hello(p graphql.ResolveParams) (interface{}, error) {
-	return "World", nil
-}
-
 func postTitle(p graphql.ResolveParams) (interface{}, error) {
-	if src, ok := p.Source.(Info); ok {
+	if src, ok := p.Source.(posts.Info); ok {
 		return src.Title, nil
 	}
 	return nil, web.NewShutdownError("info missing from context")
 }
 
 func postType(p graphql.ResolveParams) (interface{}, error) {
-	if src, ok := p.Source.(Info); ok {
+	if src, ok := p.Source.(posts.Info); ok {
 		if src.Type == "url" {
 			return "link", nil
 		}
@@ -38,66 +31,57 @@ func anyPost(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
-	postsDB, err := dbs.SelectAllPosts(p.Context)
+	infos, err := ps.Query(p.Context)
 	if err != nil {
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
-
-	post := convertPost(postsDB[0])
-	post, err = a.fillInfo(p.Context, post)
-	if err != nil {
-		return nil, newPrivateError(err.Error())
+	if len(infos) == 0 {
+		return nil, newPublicError(errors.New("there is no infos at all"))
 	}
-	return post, nil
+	return infos[0], nil
 }
 
-func posts(p graphql.ResolveParams) (interface{}, error) {
+func postsRes(p graphql.ResolveParams) (interface{}, error) {
 	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	category, userID := parseCatAndUser(p.Args["category"], p.Args["user_id"])
-	postsDB, err := dbs.ObtainPosts(p.Context, category, userID)
+	infos, err := ps.ObtainPosts(p.Context, category, userID)
 	if err != nil {
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
-
-	posts := convertPosts(postsDB)
-	posts, err = a.fillInfos(p.Context, posts)
-	if err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	return posts, nil
+	return infos, nil
 }
 
 func postURL(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
-	if src.Type != "url" {
-		return nil, newPrivateError("provided post is not link post")
+	if src.Type != "url" && src.Type != "link" {
+		return nil, newPrivateError(errors.New("provided post is not link post"))
 	}
 	return src.Payload, nil
 }
 
 func postText(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
 	if src.Type != "text" {
-		return nil, newPrivateError("provided post is not text post")
+		return nil, newPrivateError(errors.New("provided post is not text post"))
 	}
 	return src.Payload, nil
 }
 
 func postID(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
@@ -105,27 +89,23 @@ func postID(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postScore(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
 
-	score := 0
-	for _, vote := range src.Votes {
-		score += vote.Vote
-	}
-	return score, nil
+	return src.Score, nil
 }
 
 func postViews(p graphql.ResolveParams) (interface{}, error) {
-	if src, ok := p.Source.(Info); ok {
+	if src, ok := p.Source.(posts.Info); ok {
 		return src.Views, nil
 	}
 	return nil, web.NewShutdownError("info missing from context")
 }
 
 func postCategory(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
@@ -133,7 +113,7 @@ func postCategory(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postDateCreated(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
@@ -141,7 +121,7 @@ func postDateCreated(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postAuthor(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
@@ -149,43 +129,32 @@ func postAuthor(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postUpvotePercentage(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("info missing from context")
 	}
 
-	if len(src.Votes) == 0 {
-		return 0, nil
-	}
-	var positive float32
-
-	for _, vote := range src.Votes {
-		if vote.Vote == 1 {
-			positive++
-		}
-	}
-
-	return int(positive / float32(len(src.Votes)) * 100), nil
+	return src.UpvotePercentage, nil
 }
 
 func authorUsername(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(*Author)
+	src, ok := p.Source.(*posts.Author)
 	if !ok {
-		return nil, web.NewShutdownError("user missing from context")
+		return nil, web.NewShutdownError("users missing from context")
 	}
 	return src.Username, nil
 }
 
 func authorID(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(*Author)
+	src, ok := p.Source.(*posts.Author)
 	if !ok {
-		return nil, web.NewShutdownError("user missing from context")
+		return nil, web.NewShutdownError("users missing from context")
 	}
 	return src.ID, nil
 }
 
 func voteVote(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Vote)
+	src, ok := p.Source.(posts.Vote)
 	if !ok {
 		return nil, web.NewShutdownError("vote missing from context")
 	}
@@ -193,7 +162,7 @@ func voteVote(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func voteUserID(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Vote)
+	src, ok := p.Source.(posts.Vote)
 	if !ok {
 		return nil, web.NewShutdownError("vote missing from context")
 	}
@@ -201,7 +170,7 @@ func voteUserID(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func commentID(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Comment)
+	src, ok := p.Source.(posts.Comment)
 	if !ok {
 		return nil, web.NewShutdownError("comment missing from context")
 	}
@@ -209,7 +178,7 @@ func commentID(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func commentBody(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Comment)
+	src, ok := p.Source.(posts.Comment)
 	if !ok {
 		return nil, web.NewShutdownError("comment missing from context")
 	}
@@ -217,15 +186,15 @@ func commentBody(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func commentAuthor(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Comment)
+	src, ok := p.Source.(posts.Comment)
 	if !ok {
 		return nil, web.NewShutdownError("comment missing from context")
 	}
-	return src.Author, nil
+	return &src.Author, nil
 }
 
 func commentDateCreated(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Comment)
+	src, ok := p.Source.(posts.Comment)
 	if !ok {
 		return nil, web.NewShutdownError("comment missing from context")
 	}
@@ -233,7 +202,7 @@ func commentDateCreated(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postVotes(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("post missing from context")
 	}
@@ -242,7 +211,7 @@ func postVotes(p graphql.ResolveParams) (interface{}, error) {
 }
 
 func postComments(p graphql.ResolveParams) (interface{}, error) {
-	src, ok := p.Source.(Info)
+	src, ok := p.Source.(posts.Info)
 	if !ok {
 		return nil, web.NewShutdownError("post missing from context")
 	}
@@ -254,24 +223,19 @@ func authorPosts(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	src, ok := p.Source.(*Author)
+	src, ok := p.Source.(*posts.Author)
 	if !ok {
 		return nil, web.NewShutdownError("author missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	category, userID := parseCatAndUser(p.Args["category"], src.ID)
-	postsDB, err := dbs.ObtainPosts(p.Context, category, userID)
+	infos, err := ps.ObtainPosts(p.Context, category, userID)
 	if err != nil {
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
-	posts := convertPosts(postsDB)
-	posts, err = a.fillInfos(p.Context, posts)
-	if err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	return posts, nil
+	return infos, nil
 }
 
 func voteUser(p graphql.ResolveParams) (interface{}, error) {
@@ -279,18 +243,18 @@ func voteUser(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	src, ok := p.Source.(Vote)
+	src, ok := p.Source.(posts.Vote)
 	if !ok {
 		return nil, web.NewShutdownError("vote missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
-	authorDB, err := dbs.GetUserByID(p.Context, src.UserID)
+	author, err := ps.AuthorByID(p.Context, src.UserID)
 	if err != nil {
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
-	author := convertUser(authorDB)
-	return author, nil
+	//a.log.Println(author)
+	return &author, nil
 }
 
 func commentPost(p graphql.ResolveParams) (interface{}, error) {
@@ -298,45 +262,40 @@ func commentPost(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	src, ok := p.Source.(Comment)
+	src, ok := p.Source.(posts.Comment)
 	if !ok {
 		return nil, web.NewShutdownError("comment missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
-	postDB, err := dbs.GetPostByID(p.Context, src.PostID)
+	info, err := ps.QueryByID(p.Context, src.PostID)
 	if err != nil {
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
-	post := convertPost(postDB)
-	return post, nil
+
+	return info, nil
 }
 
-func post(p graphql.ResolveParams) (interface{}, error) {
+func postRes(p graphql.ResolveParams) (interface{}, error) {
 	a, ok := p.Context.Value(KeyPostGQL).(PostGQL)
 	if !ok {
 		return nil, web.NewShutdownError("postGQL missing from context")
 	}
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID, _ := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, newPublicError(ErrInvalidPostID.Error())
-	}
-
-	postDB, err := dbs.GetPostByID(p.Context, postID)
+	info, err := ps.QueryByID(p.Context, postID)
 	if err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, newPublicError(ErrInvalidPostID)
+		case posts.ErrPostNotFound:
+			return nil, newPublicError(err)
+		default:
+			return nil, newPrivateError(err)
 		}
-		return nil, newPrivateError(err.Error())
 	}
-	post := convertPost(postDB)
-	post, err = a.fillInfo(p.Context, post)
-	if err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	return post, nil
+	return info, nil
 }
 
 func postCreate(p graphql.ResolveParams) (interface{}, error) {
@@ -353,37 +312,30 @@ func postCreate(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
+	}
+
+	ps := posts.New(a.log, a.db)
+	np := posts.NewPost{
+		Title:    p.Args["title"].(string),
+		Type:     p.Args["type"].(string),
+		Category: p.Args["category"].(string),
+		Text:     p.Args["payload"].(string),
+		URL:      p.Args["payload"].(string),
 	}
 
 	v, ok := p.Context.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return nil, web.NewShutdownError("web value missing from context")
 	}
-
-	dbs := db.NewDBset(a.log, a.db)
-	newPost := db.PostDB{
-		ID:          uuid.New().String(),
-		Views:       0,
-		Title:       p.Args["title"].(string),
-		Type:        p.Args["type"].(string),
-		Category:    p.Args["category"].(string),
-		Payload:     p.Args["payload"].(string),
-		DateCreated: v.Now,
-		UserID:      claims.User.ID,
+	info, err := ps.Create(p.Context, claims, np, v.Now)
+	if err != nil {
+		return nil, newPrivateError(err)
 	}
 
-	if err := dbs.InsertPost(p.Context, newPost); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-
-	if err := dbs.InsertVote(p.Context, newPost.ID, newPost.UserID, 1); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	p.Args["post_id"] = newPost.ID
-	return post(p)
+	return info, nil
 }
 
 func postDelete(p graphql.ResolveParams) (interface{}, error) {
@@ -397,37 +349,31 @@ func postDelete(p graphql.ResolveParams) (interface{}, error) {
 		return nil, web.NewShutdownError("auth missing from context")
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
-
-	postDB, err := dbs.GetPostByID(p.Context, postID)
+	info, err := ps.Delete(p.Context, claims, postID)
 	if err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		case posts.ErrPostNotFound:
+			return nil, newPublicError(err)
+		case posts.ErrForbidden:
+			return nil, ErrForbidden
+		default:
+			return nil, newPrivateError(err)
 		}
-		return nil, newPrivateError(err.Error())
 	}
-
-	if claims.User.ID != postDB.UserID {
-		return nil, ErrForbidden
-	}
-
-	if err := dbs.DeletePost(p.Context, postID); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	return post(p)
+	return info, nil
 }
 
 func commentCreate(p graphql.ResolveParams) (interface{}, error) {
@@ -444,9 +390,9 @@ func commentCreate(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
 	v, ok := p.Context.Value(web.KeyValues).(*web.Values)
@@ -454,32 +400,23 @@ func commentCreate(p graphql.ResolveParams) (interface{}, error) {
 		return nil, web.NewShutdownError("web value missing from context")
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
 
-	if err := dbs.CheckPost(p.Context, postID); err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
+	nc := posts.NewComment{Text: p.Args["text"].(string)}
+	info, err := ps.CreateComment(p.Context, claims, nc, postID, v.Now)
+	if err != nil {
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		case posts.ErrPostNotFound:
+			return nil, newPublicError(err)
+		default:
+			return nil, newPrivateError(err)
 		}
-		return nil, newPrivateError(err.Error())
 	}
-
-	ncDB := db.CommentDB{
-		DateCreated: v.Now,
-		PostID:      postID,
-		AuthorID:    claims.User.ID,
-		Body:        p.Args["text"].(string),
-		ID:          uuid.New().String(),
-	}
-
-	if err := dbs.CreateComment(p.Context, ncDB); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-	return post(p)
+	return info, nil
 }
 
 func commentDelete(p graphql.ResolveParams) (interface{}, error) {
@@ -496,46 +433,35 @@ func commentDelete(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
 	commentID := p.Args["comment_id"].(string)
-	if _, err := uuid.Parse(commentID); err != nil {
-		return nil, ErrInvalidCommentID
-	}
 
-	if err := dbs.CheckPost(p.Context, postID); err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
-		}
-		return nil, newPrivateError(err.Error())
-	}
-
-	commentDB, err := dbs.GetCommentByID(p.Context, commentID)
+	info, err := ps.DeleteComment(p.Context, claims, postID, commentID)
 	if err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		case posts.ErrInvalidCommentID:
+			return nil, ErrInvalidCommentID
+		case posts.ErrPostNotFound:
+			return nil, newPublicError(err)
+		case posts.ErrCommentNotFound:
+			return nil, newPublicError(err)
+		case posts.ErrForbidden:
+			return nil, ErrForbidden
+		default:
+			return nil, newPrivateError(err)
 		}
-		return nil, newPrivateError(err.Error())
 	}
 
-	if claims.User.ID != commentDB.AuthorID {
-		return nil, ErrForbidden
-	}
-
-	if err := dbs.DeleteComment(p.Context, commentID); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-
-	return post(p)
+	return info, nil
 }
 
 func upvote(p graphql.ResolveParams) (interface{}, error) {
@@ -552,38 +478,25 @@ func upvote(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
-	if err := dbs.CheckPost(p.Context, postID); err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
-		}
-		return nil, newPrivateError(err.Error())
-	}
-
-	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
-		if err != db.ErrVoteNotFound {
-			return nil, newPrivateError(err.Error())
-		}
-		if err := dbs.InsertVote(p.Context, postID, claims.User.ID, 1); err != nil {
-			return nil, newPrivateError(err.Error())
-		}
-	} else {
-		if err := dbs.UpdateVote(p.Context, postID, claims.User.ID, 1); err != nil {
-			return nil, newPrivateError(err.Error())
+	info, err := ps.Vote(p.Context, claims, postID, 1)
+	if err != nil {
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		default:
+			return nil, newPrivateError(err)
 		}
 	}
 
-	return post(p)
+	return info, nil
 }
 
 func downvote(p graphql.ResolveParams) (interface{}, error) {
@@ -600,38 +513,24 @@ func downvote(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
-	if err := dbs.CheckPost(p.Context, postID); err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
-		}
-		return nil, newPrivateError(err.Error())
-	}
-
-	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
-		if err != db.ErrVoteNotFound {
-			return nil, newPrivateError(err.Error())
-		}
-		if err := dbs.InsertVote(p.Context, postID, claims.User.ID, 0); err != nil {
-			return nil, newPrivateError(err.Error())
-		}
-	} else {
-		if err := dbs.UpdateVote(p.Context, postID, claims.User.ID, 0); err != nil {
-			return nil, newPrivateError(err.Error())
+	info, err := ps.Vote(p.Context, claims, postID, -1)
+	if err != nil {
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		default:
+			return nil, newPrivateError(err)
 		}
 	}
-
-	return post(p)
+	return info, nil
 }
 
 func unvote(p graphql.ResolveParams) (interface{}, error) {
@@ -648,36 +547,24 @@ func unvote(p graphql.ResolveParams) (interface{}, error) {
 	claims, err := au.ValidateString(p.Context.Value(KeyAuthHeader).(string))
 	if err != nil {
 		if err == auth.ErrExpectedBearer {
-			return nil, newPublicError(err.Error())
+			return nil, newPublicError(err)
 		}
-		return nil, newPrivateError(err.Error())
+		return nil, newPrivateError(err)
 	}
 
-	dbs := db.NewDBset(a.log, a.db)
+	ps := posts.New(a.log, a.db)
 
 	postID := p.Args["post_id"].(string)
-	if _, err := uuid.Parse(postID); err != nil {
-		return nil, ErrInvalidPostID
-	}
-	if err := dbs.CheckPost(p.Context, postID); err != nil {
-		if err == db.ErrPostNotFound {
-			return nil, newPublicError(err.Error())
-		}
-		return nil, newPrivateError(err.Error())
-	}
-
-	if err := dbs.CheckVote(p.Context, postID, claims.User.ID); err != nil {
-		if err != db.ErrVoteNotFound {
-			return nil, newPrivateError(err.Error())
-		} else {
-			return post(p)
+	info, err := ps.Unvote(p.Context, claims, postID)
+	if err != nil {
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, ErrInvalidPostID
+		default:
+			return nil, newPrivateError(err)
 		}
 	}
-	if err := dbs.DeleteVote(p.Context, postID, claims.User.ID); err != nil {
-		return nil, newPrivateError(err.Error())
-	}
-
-	return post(p)
+	return info, nil
 }
 
 func register(p graphql.ResolveParams) (interface{}, error) {
@@ -695,46 +582,37 @@ func register(p graphql.ResolveParams) (interface{}, error) {
 	if !ok {
 		return nil, web.NewShutdownError("auth missing from context")
 	}
+	us := users.New(a.log, a.db)
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(p.Args["password"].(string)), bcrypt.DefaultCost)
+	nu := users.NewUser{
+		Name:     p.Args["name"].(string),
+		Password: p.Args["password"].(string),
+	}
+
+	_, err := us.Create(p.Context, nu, v.Now)
 	if err != nil {
-		return nil, web.NewShutdownError("generating password hash: " + err.Error())
+		return nil, newPrivateError(errors.Wrapf(err, "unable to create users with name %s", nu.Name))
 	}
 
-	usr := db.FullUserDB{
-		ID:           uuid.New().String(),
-		Name:         p.Args["name"].(string),
-		PasswordHash: hash,
-		DateCreated:  v.Now,
-	}
-
-	dbs := db.NewDBset(a.log, a.db)
-
-	dbs.CreateUser(p.Context, usr)
-
-	claims, err := user.New(a.log, a.db).Authenticate(p.Context, usr.Name, p.Args["password"].(string), v.Now)
+	claims, err := us.Authenticate(p.Context, nu.Name, nu.Password, v.Now)
 	if err != nil {
 		switch err {
-		case user.ErrAuthenticationFailure:
-			return nil, newPublicError(err.Error())
+		case users.ErrAuthenticationFailure:
+			return nil, newPublicError(err)
 		default:
-			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate user with name %s", usr.Name).Error())
+			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate users with name %s", nu.Name))
 		}
 	}
 
-	// todo: consider HS256
 	kid := au.GetKID()
 	Token, err := au.GenerateToken(kid, claims)
 	if err != nil {
-		return nil, newPrivateError(errors.Wrapf(err, "generating token").Error())
+		return nil, newPrivateError(errors.Wrapf(err, "generating token"))
 	}
 
 	return auth.Data{
 		Token: Token,
-		User: auth.User{
-			Username: usr.Name,
-			ID:       usr.ID,
-		},
+		User:  claims.User,
 	}, nil
 }
 
@@ -753,29 +631,26 @@ func signIn(p graphql.ResolveParams) (interface{}, error) {
 		return nil, web.NewShutdownError("auth missing from context")
 	}
 	Name := p.Args["name"].(string)
-	claims, err := user.New(a.log, a.db).Authenticate(p.Context, Name, p.Args["password"].(string), v.Now)
+	Password := p.Args["password"].(string)
+	claims, err := users.New(a.log, a.db).Authenticate(p.Context, Name, Password, v.Now)
 	if err != nil {
 		switch err {
-		case user.ErrAuthenticationFailure:
-			return nil, newPublicError(err.Error())
+		case users.ErrAuthenticationFailure:
+			return nil, newPublicError(err)
 		default:
-			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate user with name %s", Name).Error())
+			return nil, newPrivateError(errors.Wrapf(err, "unable to authenticate users with name %s", Name))
 		}
 	}
 
-	// todo: consider HS256
 	kid := au.GetKID()
 	Token, err := au.GenerateToken(kid, claims)
 	if err != nil {
-		return nil, newPrivateError(errors.Wrapf(err, "generating token").Error())
+		return nil, newPrivateError(errors.Wrapf(err, "generating token"))
 	}
 
 	return auth.Data{
 		Token: Token,
-		User: auth.User{
-			Username: claims.User.Username,
-			ID:       claims.User.ID,
-		},
+		User:  claims.User,
 	}, nil
 }
 
@@ -783,14 +658,14 @@ func userID(p graphql.ResolveParams) (interface{}, error) {
 	if src, ok := p.Source.(auth.User); ok {
 		return src.ID, nil
 	}
-	return nil, web.NewShutdownError("auth.User missing from context")
+	return nil, web.NewShutdownError("auth.UserID missing from context")
 }
 
 func username(p graphql.ResolveParams) (interface{}, error) {
 	if src, ok := p.Source.(auth.User); ok {
 		return src.Username, nil
 	}
-	return nil, web.NewShutdownError("auth.User missing from context")
+	return nil, web.NewShutdownError("auth.UserID missing from context")
 }
 
 func authUser(p graphql.ResolveParams) (interface{}, error) {

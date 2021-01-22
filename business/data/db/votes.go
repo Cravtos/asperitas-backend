@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// SelectVotesByPostID returns slice of Vote for a single post
+// SelectVotesByPostID returns slice of Vote for a single posts
 func (setup DBset) SelectVotesByPostID(ctx context.Context, ID string) ([]VoteDB, error) {
 	const qVotes = `SELECT user_id, vote FROM votes WHERE post_id = $1`
 
@@ -30,7 +30,7 @@ func (setup DBset) InsertVote(ctx context.Context, postID string, userID string,
 	return nil
 }
 
-// CheckVote shows whether vote to given post by user exists in database.
+// CheckVote shows whether vote to given posts by users exists in database.
 // It returns an error if vote does not exist.
 func (setup DBset) CheckVote(ctx context.Context, postID string, userID string) error {
 	const qCheckExist = `SELECT COUNT(*) FROM votes WHERE post_id = $1 AND user_id = $2`

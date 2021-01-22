@@ -1,6 +1,7 @@
 package postgql
 
 import (
+	"github.com/cravtos/asperitas-backend/business/data/posts"
 	"github.com/graphql-go/graphql"
 )
 
@@ -111,8 +112,8 @@ func Init() {
 	infoInterface = graphql.NewInterface(graphql.InterfaceConfig{
 		Name: "Info",
 		ResolveType: func(p graphql.ResolveTypeParams) *graphql.Object {
-			post, _ := p.Value.(Info)
-			if post.Type == "url" {
+			post, _ := p.Value.(posts.Info)
+			if post.Type == "url" || post.Type == "link" {
 				return postLinkType
 			}
 			return postTextType
@@ -296,7 +297,7 @@ func Init() {
 			},
 			"posts": &graphql.Field{
 				Type:    graphql.NewList(infoInterface),
-				Resolve: posts,
+				Resolve: postsRes,
 				Args: graphql.FieldConfigArgument{
 					"category": &graphql.ArgumentConfig{
 						Type: categoryEnum,
@@ -308,7 +309,7 @@ func Init() {
 			},
 			"post": &graphql.Field{
 				Type:    infoInterface,
-				Resolve: post,
+				Resolve: postRes,
 				Args: graphql.FieldConfigArgument{
 					"post_id": &graphql.ArgumentConfig{
 						Type: graphql.NewNonNull(graphql.String),
@@ -319,14 +320,14 @@ func Init() {
 	})
 
 	userType = graphql.NewObject(graphql.ObjectConfig{
-		Name: "Auth",
+		Name: "User",
 		Fields: graphql.Fields{
 			"username": &graphql.Field{
 				Type:    graphql.String,
 				Resolve: username,
 			},
 			"user_id": &graphql.Field{
-				Type:    userType,
+				Type:    graphql.ID,
 				Resolve: userID,
 			},
 		},
@@ -439,6 +440,7 @@ func Init() {
 					},
 				},
 			},
+
 			"sign_in": &graphql.Field{
 				Type:    authType,
 				Resolve: signIn,
@@ -454,10 +456,12 @@ func Init() {
 		},
 	})
 
+	_ = mutationType
+
 	Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
 		Query:    queryType,
 		Mutation: mutationType,
-		Types:    []graphql.Type{postTextType, postLinkType, authorType, commentType, voteType},
+		Types:    []graphql.Type{postTextType, postLinkType, authorType, commentType, voteType, authType, userType},
 	})
 }
 

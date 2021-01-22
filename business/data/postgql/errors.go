@@ -9,13 +9,13 @@ type PrivateError struct {
 }
 
 //newPublicError returns new error that will be shown to client
-func newPublicError(msg string) *PublicError {
-	return &PublicError{message: msg}
+func newPublicError(msg error) *PublicError {
+	return &PublicError{message: msg.Error()}
 }
 
 //newPublicError returns new error that won`t be shown to client
-func newPrivateError(msg string) *PrivateError {
-	return &PrivateError{message: msg}
+func newPrivateError(msg error) *PrivateError {
+	return &PrivateError{message: msg.Error()}
 }
 
 //implementing built-in interface error

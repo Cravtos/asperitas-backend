@@ -1,42 +1,42 @@
-package handlers
+package rest
 
 import (
 	"context"
 	"github.com/cravtos/asperitas-backend/business/auth"
-	"github.com/cravtos/asperitas-backend/business/data/user"
+	"github.com/cravtos/asperitas-backend/business/data/users"
 	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/pkg/errors"
 	"net/http"
 )
 
-type userGroup struct {
-	user user.User
-	auth *auth.Auth
+type UserGroup struct {
+	User users.User
+	Auth *auth.Auth
 }
 
-func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (ug UserGroup) Register(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return errors.New("web values missing from context")
 	}
 
-	var nu user.NewUser
+	var nu users.NewUser
 	if err := web.Decode(r, &nu); err != nil {
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	_, err := ug.user.Create(ctx, nu, v.Now)
+	_, err := ug.User.Create(ctx, nu, v.Now)
 	if err != nil {
-		return errors.Wrapf(err, "unable to create user with name %s", nu.Name)
+		return errors.Wrapf(err, "unable to create users with name %s", nu.Name)
 	}
 
-	claims, err := ug.user.Authenticate(ctx, nu.Name, nu.Password, v.Now)
+	claims, err := ug.User.Authenticate(ctx, nu.Name, nu.Password, v.Now)
 	if err != nil {
 		switch err {
-		case user.ErrAuthenticationFailure:
+		case users.ErrAuthenticationFailure:
 			return web.NewRequestError(err, http.StatusForbidden)
 		default:
-			return errors.Wrapf(err, "unable to authenticate user with name %s", nu.Name)
+			return errors.Wrapf(err, "unable to authenticate users with name %s", nu.Name)
 		}
 	}
 
@@ -44,8 +44,8 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 		Token string `json:"token"`
 	}
 	// todo: consider HS256
-	kid := ug.auth.GetKID()
-	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
+	kid := ug.Auth.GetKID()
+	tkn.Token, err = ug.Auth.GenerateToken(kid, claims)
 	if err != nil {
 		return errors.Wrapf(err, "generating token")
 	}
@@ -53,7 +53,7 @@ func (ug userGroup) register(ctx context.Context, w http.ResponseWriter, r *http
 	return web.Respond(ctx, w, tkn, http.StatusOK)
 }
 
-func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (ug UserGroup) Login(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
 		return errors.New("web values missing from context")
@@ -68,21 +68,21 @@ func (ug userGroup) login(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return errors.Wrapf(err, "unable to decode payload")
 	}
 
-	claims, err := ug.user.Authenticate(ctx, u.Username, u.Password, v.Now)
+	claims, err := ug.User.Authenticate(ctx, u.Username, u.Password, v.Now)
 	if err != nil {
 		switch err {
-		case user.ErrAuthenticationFailure:
+		case users.ErrAuthenticationFailure:
 			return web.NewRequestError(err, http.StatusForbidden)
 		default:
-			return errors.Wrapf(err, "unable to authenticate user with name %s", u.Username)
+			return errors.Wrapf(err, "unable to authenticate users with name %s", u.Username)
 		}
 	}
 
 	var tkn struct {
 		Token string `json:"token"`
 	}
-	kid := ug.auth.GetKID()
-	tkn.Token, err = ug.auth.GenerateToken(kid, claims)
+	kid := ug.Auth.GetKID()
+	tkn.Token, err = ug.Auth.GenerateToken(kid, claims)
 	if err != nil {
 		return errors.Wrapf(err, "generating token")
 	}

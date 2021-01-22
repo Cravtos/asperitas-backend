@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// postDB represents an individual post in database.
+// postDB represents an individual posts in database.
 type PostDB struct {
 	ID          string    `db:"post_id"`
 	Views       int       `db:"views"`
@@ -22,10 +22,10 @@ type UserDB struct {
 	ID       string `db:"user_id"`
 }
 
-// VoteDB represents info about user vote.
+// VoteDB represents info about users vote.
 type VoteDB struct {
-	User string `db:"user_id"`
-	Vote int    `db:"vote"`
+	UserID string `db:"user_id"`
+	Vote   int    `db:"vote"`
 }
 
 // CommentDB represents an individual comment in database

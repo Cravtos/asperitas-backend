@@ -35,7 +35,7 @@ const Key ctxKey = 1
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
 	jwt.StandardClaims
-	User User `json:"user"`
+	User User `json:"users"`
 }
 
 // Keys represents an in memory store of keys.
@@ -58,7 +58,7 @@ type Keys map[string]*rsa.PrivateKey
 type PublicKeyLookup func(kid string) (*rsa.PublicKey, error)
 
 // Auth is used to authenticate clients. It can generate a token for a
-// set of user claims and recreate the claims by parsing the token.
+// set of users claims and recreate the claims by parsing the token.
 type Auth struct {
 	mu        sync.RWMutex
 	algorithm string
@@ -87,7 +87,7 @@ func New(algorithm string, defaultKID string, lookup PublicKeyLookup, keys Keys)
 		}
 		kidID, ok := kid.(string)
 		if !ok {
-			return nil, errors.New("user token key id (kid) must be string")
+			return nil, errors.New("users token key id (kid) must be string")
 		}
 		return lookup(kidID)
 	}
@@ -125,7 +125,7 @@ func (a *Auth) RemoveKey(kid string) {
 	delete(a.keys, kid)
 }
 
-// GenerateToken generates a signed JWT token string representing the user Claims.
+// GenerateToken generates a signed JWT token string representing the users Claims.
 func (a *Auth) GenerateToken(kid string, claims Claims) (string, error) {
 	token := jwt.NewWithClaims(a.method, claims)
 	token.Header["kid"] = kid

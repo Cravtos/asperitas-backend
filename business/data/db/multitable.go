@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// SelectCommentsWithUserByPostID return slice of Comment for a single post
+// SelectCommentsWithUserByPostID return slice of Comment for a single posts
 func (setup DBset) SelectCommentsWithUserByPostID(ctx context.Context, ID string) ([]CommentWithUserDB, error) {
 	const qComments = `
 		SELECT name, user_id, cm.date_created, body, comment_id 

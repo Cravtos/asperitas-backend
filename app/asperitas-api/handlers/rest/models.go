@@ -1,8 +1,6 @@
-package post
+package rest
 
-import (
-	"time"
-)
+import "time"
 
 // Author represents info about author
 type Author struct {
@@ -10,10 +8,18 @@ type Author struct {
 	ID       string `json:"id"`
 }
 
-// Vote represents info about user vote.
+// Vote represents info about users vote.
 type Vote struct {
-	User string `json:"user"`
+	User string `json:"users"`
 	Vote int    `json:"vote"`
+}
+
+// Comment represents info about comments for the posts prepared to be sent to users.
+type Comment struct {
+	DateCreated time.Time `json:"created"`
+	Author      Author    `json:"author"`
+	Body        string    `json:"body"`
+	ID          string    `json:"id"`
 }
 
 // Info generalizes text and link posts
@@ -21,7 +27,7 @@ type Info interface {
 	Info()
 }
 
-// InfoText represents an individual text post which is sent to user.
+// InfoText represents an individual text posts which is sent to users.
 type InfoText struct {
 	Type             string    `json:"type"`
 	ID               string    `json:"id"`
@@ -37,7 +43,7 @@ type InfoText struct {
 	UpvotePercentage int       `json:"upvotePercentage"`
 }
 
-// InfoLink represents an individual link post which is sent to user.
+// InfoLink represents an individual link posts which is sent to users.
 type InfoLink struct {
 	Type             string    `json:"type"`
 	ID               string    `json:"id"`
@@ -55,25 +61,3 @@ type InfoLink struct {
 
 func (it InfoText) Info() {}
 func (il InfoLink) Info() {}
-
-// Comment represents info about comments for the post prepared to be sent to user.
-type Comment struct {
-	DateCreated time.Time `json:"created"`
-	Author      Author    `json:"author"`
-	Body        string    `json:"body"`
-	ID          string    `json:"id"`
-}
-
-// NewPost is what we require from users when adding a PostSet.
-type NewPost struct {
-	Type     string `json:"type" default:"link"`
-	Title    string `json:"title" validate:"required"`
-	Category string `json:"category" validate:"required"`
-	Text     string `json:"text"`
-	URL      string `json:"url"`
-}
-
-// NewComment is what we require from users when adding a Comment.
-type NewComment struct {
-	Text string `json:"comment" validate:"required"`
-}

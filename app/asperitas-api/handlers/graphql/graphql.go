@@ -1,4 +1,4 @@
-package handlers
+package graphql
 
 import (
 	"context"
@@ -14,20 +14,20 @@ import (
 
 type PostGroupGQL struct {
 	P      postgql.PostGQL
-	schema graphql.Schema
-	auth   *auth.Auth
+	Schema graphql.Schema
+	Auth   *auth.Auth
 }
 
-func (gqlg *PostGroupGQL) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (gqlg *PostGroupGQL) Handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	// get query
 	opts := utilgql.NewRequestOptions(r)
 
 	ctx = context.WithValue(ctx, postgql.KeyPostGQL, gqlg.P)
-	ctx = context.WithValue(ctx, postgql.KeyAuth, gqlg.auth)
+	ctx = context.WithValue(ctx, postgql.KeyAuth, gqlg.Auth)
 	ctx = context.WithValue(ctx, postgql.KeyAuthHeader, r.Header.Get("authorization"))
 	// execute graphql query
 	params := graphql.Params{
-		Schema:         gqlg.schema,
+		Schema:         gqlg.Schema,
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,

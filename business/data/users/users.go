@@ -1,5 +1,5 @@
-// Package user contains user related CRUD functionality.
-package user
+// Package users contains users related CRUD functionality.
+package users
 
 import (
 	"context"
@@ -24,15 +24,15 @@ var (
 	// ErrInvalidID occurs when an ID is not in a valid form.
 	ErrInvalidID = errors.New("ID is not in its proper form")
 
-	// ErrAuthenticationFailure occurs when a user attempts to authenticate but
+	// ErrAuthenticationFailure occurs when a users attempts to authenticate but
 	// anything goes wrong.
 	ErrAuthenticationFailure = errors.New("authentication failed")
 
-	// ErrForbidden occurs when a user tries to do something that is forbidden to them according to our access control policies.
+	// ErrForbidden occurs when a users tries to do something that is forbidden to them according to our access control policies.
 	ErrForbidden = errors.New("attempted action is not allowed")
 )
 
-// User manages the set of API's for user access.
+// User manages the set of API's for users access.
 type User struct {
 	log *log.Logger
 	db  *sqlx.DB
@@ -46,7 +46,7 @@ func New(log *log.Logger, db *sqlx.DB) User {
 	}
 }
 
-// Create inserts a new user into the database.
+// Create inserts a new users into the database.
 func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(nu.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -62,12 +62,14 @@ func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, erro
 
 	dbs := db.NewDBset(u.log, u.db)
 
-	dbs.CreateUser(ctx, usr)
+	if err := dbs.CreateUser(ctx, usr); err != nil {
+		return Info{}, err
+	}
 
 	return convertUserDBToInfo(usr), nil
 }
 
-// Delete removes a user from the database.
+// Delete removes a users from the database.
 func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) error {
 
 	if _, err := uuid.Parse(userID); err != nil {
@@ -85,12 +87,12 @@ func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) err
 	WHERE
 		user_id = $1`
 
-	u.log.Printf("%s: %s", "user.Delete",
+	u.log.Printf("%s: %s", "users.Delete",
 		database.Log(q, userID),
 	)
 
 	if _, err := u.db.ExecContext(ctx, q, userID); err != nil {
-		return errors.Wrapf(err, "deleting user %s", userID)
+		return errors.Wrapf(err, "deleting users %s", userID)
 	}
 
 	return nil
@@ -110,7 +112,7 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 
 	offset := (pageNumber - 1) * rowsPerPage
 
-	u.log.Printf("%s: %s: %s", traceID, "user.Query",
+	u.log.Printf("%s: %s: %s", traceID, "users.Query",
 		database.Log(q, offset, rowsPerPage),
 	)
 
@@ -122,7 +124,7 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 	return users, nil
 }
 
-// QueryByID gets the specified user from the database.
+// QueryByID gets the specified users from the database.
 func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) (Info, error) {
 
 	if _, err := uuid.Parse(userID); err != nil {
@@ -142,7 +144,7 @@ func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) 
 	WHERE 
 		user_id = $1`
 
-	u.log.Printf("%s: %s", "user.QueryByID",
+	u.log.Printf("%s: %s", "users.QueryByID",
 		database.Log(q, userID),
 	)
 
@@ -151,13 +153,13 @@ func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) 
 		if err == sql.ErrNoRows {
 			return Info{}, ErrNotFound
 		}
-		return Info{}, errors.Wrapf(err, "selecting user %q", userID)
+		return Info{}, errors.Wrapf(err, "selecting users %q", userID)
 	}
 
 	return usr, nil
 }
 
-// QueryByName gets the specified user from the database by username.
+// QueryByName gets the specified users from the database by username.
 func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) (Info, error) {
 
 	const q = `
@@ -168,7 +170,7 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 	WHERE
 		name = $1`
 
-	u.log.Printf("%s: %s", "user.QueryByName",
+	u.log.Printf("%s: %s", "users.QueryByName",
 		database.Log(q, name),
 	)
 
@@ -177,7 +179,7 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 		if err == sql.ErrNoRows {
 			return Info{}, ErrNotFound
 		}
-		return Info{}, errors.Wrapf(err, "selecting user %q", name)
+		return Info{}, errors.Wrapf(err, "selecting users %q", name)
 	}
 
 	// If you are looking to retrieve someone other than yourself.
@@ -188,8 +190,8 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 	return usr, nil
 }
 
-// Authenticate finds a user by their name and verifies their password. On
-// success it returns a Claims Info representing this user. The claims can be
+// Authenticate finds a users by their name and verifies their password. On
+// success it returns a Claims Info representing this users. The claims can be
 // used to generate a token for future authentication.
 func (u User) Authenticate(ctx context.Context, name, password string, now time.Time) (auth.Claims, error) {
 
@@ -198,12 +200,12 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 	usrDB, err := dbs.GetFullUserByName(ctx, name)
 	if err != nil {
 		// Normally we would return ErrNotFound in this scenario but we do not want
-		// to leak to an unauthenticated user which emails are in the system.
+		// to leak to an unauthenticated users which emails are in the system.
 		if err == db.ErrUserNotFound {
 			return auth.Claims{}, ErrAuthenticationFailure
 		}
 
-		return auth.Claims{}, errors.Wrap(err, "selecting single user")
+		return auth.Claims{}, errors.Wrap(err, "selecting single users")
 	}
 
 	// Compare the provided password with the saved hash. Use the bcrypt
@@ -212,7 +214,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 		return auth.Claims{}, ErrAuthenticationFailure
 	}
 
-	// If we are this far the request is valid. Create some claims for the user
+	// If we are this far the request is valid. Create some claims for the users
 	// and generate their token.
 	claims := auth.Claims{
 		StandardClaims: jwt.StandardClaims{

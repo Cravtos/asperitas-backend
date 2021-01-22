@@ -21,7 +21,7 @@ func TestAuth(t *testing.T) {
 	t.Log("Given the need to be able to authenticate and authorize access.")
 	{
 		testID := 0
-		t.Logf("\tTest %d:\tWhen handling a single user.", testID)
+		t.Logf("\tTest %d:\tWhen handling a single users.", testID)
 		{
 			privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 			if err != nil {
@@ -53,7 +53,7 @@ func TestAuth(t *testing.T) {
 				},
 				User: auth.User{
 					Username: "test_name",
-					ID: "test_id",
+					ID:       "test_id",
 				},
 			}
 
