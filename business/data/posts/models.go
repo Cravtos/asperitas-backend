@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// Info represents an individual posts before sending it to users
+// Info represents an individual post
 type Info struct {
 	ID               string
 	Views            int
@@ -21,7 +21,7 @@ type Info struct {
 	Comments         []Comment
 }
 
-// Author represents info about authorType
+// Author represents info about author of Info, Comment or Vote
 type Author struct {
 	Username string
 	ID       string
@@ -33,7 +33,7 @@ type Vote struct {
 	Vote   int
 }
 
-// Comment represents info about comments for the posts prepared to be sent to users.
+// Comment represents info about comments for the posts.
 type Comment struct {
 	PostID      string
 	DateCreated time.Time
@@ -42,7 +42,7 @@ type Comment struct {
 	ID          string
 }
 
-// NewPost is what we require from users when adding a PostSetup.
+// NewPost is what we require from users when adding a Post
 type NewPost struct {
 	Type     string `json:"type" default:"link"`
 	Title    string `json:"title" validate:"required"`

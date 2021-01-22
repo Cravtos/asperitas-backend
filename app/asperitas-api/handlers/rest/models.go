@@ -8,7 +8,7 @@ type Author struct {
 	ID       string `json:"id"`
 }
 
-// Vote represents info about users vote.
+// Vote represents info about user vote.
 type Vote struct {
 	User string `json:"users"`
 	Vote int    `json:"vote"`
@@ -27,7 +27,7 @@ type Info interface {
 	Info()
 }
 
-// InfoText represents an individual text posts which is sent to users.
+// InfoText represents an individual text postswhich is sent to users.
 type InfoText struct {
 	Type             string    `json:"type"`
 	ID               string    `json:"id"`
@@ -43,7 +43,7 @@ type InfoText struct {
 	UpvotePercentage int       `json:"upvotePercentage"`
 }
 
-// InfoLink represents an individual link posts which is sent to users.
+// InfoLink represents an individual link post which is sent to users.
 type InfoLink struct {
 	Type             string    `json:"type"`
 	ID               string    `json:"id"`

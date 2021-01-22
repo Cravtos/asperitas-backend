@@ -34,27 +34,6 @@ func getNewPostInfo(post db.PostDB, claims auth.Claims) Info {
 	return info
 }
 
-// getInfo creates new Info using data from DB
-func getInfo(post db.PostDB, author *Author, votes []Vote, comments []Comment) Info {
-	var info Info
-	info = Info{
-		Type:             "link",
-		ID:               post.ID,
-		Score:            score(votes),
-		Views:            post.Views,
-		Title:            post.Title,
-		Payload:          post.Payload,
-		Category:         post.Category,
-		DateCreated:      post.DateCreated,
-		Author:           author,
-		Votes:            votes,
-		Comments:         comments,
-		UpvotePercentage: upvotePercentage(votes),
-	}
-
-	return info
-}
-
 // getEmptyInfo creates new Info filled only with db.posts data
 func getEmptyInfo(post db.PostDB) Info {
 	var info Info

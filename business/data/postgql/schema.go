@@ -287,10 +287,6 @@ func Init() {
 	var queryType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
-			"Hello": &graphql.Field{
-				Type:    graphql.String,
-				Resolve: Hello,
-			},
 			"anyPost": &graphql.Field{
 				Type:    infoInterface,
 				Resolve: anyPost,

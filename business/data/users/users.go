@@ -69,7 +69,7 @@ func (u User) Create(ctx context.Context, nu NewUser, now time.Time) (Info, erro
 	return convertUserDBToInfo(usr), nil
 }
 
-// Delete removes a users from the database.
+// Delete removes a user from the database.
 func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) error {
 
 	if _, err := uuid.Parse(userID); err != nil {
@@ -92,7 +92,7 @@ func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) err
 	)
 
 	if _, err := u.db.ExecContext(ctx, q, userID); err != nil {
-		return errors.Wrapf(err, "deleting users %s", userID)
+		return errors.Wrapf(err, "deleting user %s", userID)
 	}
 
 	return nil
@@ -124,7 +124,7 @@ func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPer
 	return users, nil
 }
 
-// QueryByID gets the specified users from the database.
+// QueryByID gets the specified user from the database.
 func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) (Info, error) {
 
 	if _, err := uuid.Parse(userID); err != nil {
@@ -153,13 +153,13 @@ func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) 
 		if err == sql.ErrNoRows {
 			return Info{}, ErrNotFound
 		}
-		return Info{}, errors.Wrapf(err, "selecting users %q", userID)
+		return Info{}, errors.Wrapf(err, "selecting user %q", userID)
 	}
 
 	return usr, nil
 }
 
-// QueryByName gets the specified users from the database by username.
+// QueryByName gets the specified user from the database by username.
 func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) (Info, error) {
 
 	const q = `
@@ -179,7 +179,7 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 		if err == sql.ErrNoRows {
 			return Info{}, ErrNotFound
 		}
-		return Info{}, errors.Wrapf(err, "selecting users %q", name)
+		return Info{}, errors.Wrapf(err, "selecting user %q", name)
 	}
 
 	// If you are looking to retrieve someone other than yourself.
@@ -190,8 +190,8 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 	return usr, nil
 }
 
-// Authenticate finds a users by their name and verifies their password. On
-// success it returns a Claims Info representing this users. The claims can be
+// Authenticate finds a user by their name and verifies their password. On
+// success it returns a Claims Info representing this user. The claims can be
 // used to generate a token for future authentication.
 func (u User) Authenticate(ctx context.Context, name, password string, now time.Time) (auth.Claims, error) {
 
@@ -205,7 +205,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 			return auth.Claims{}, ErrAuthenticationFailure
 		}
 
-		return auth.Claims{}, errors.Wrap(err, "selecting single users")
+		return auth.Claims{}, errors.Wrap(err, "selecting single user")
 	}
 
 	// Compare the provided password with the saved hash. Use the bcrypt
@@ -214,7 +214,7 @@ func (u User) Authenticate(ctx context.Context, name, password string, now time.
 		return auth.Claims{}, ErrAuthenticationFailure
 	}
 
-	// If we are this far the request is valid. Create some claims for the users
+	// If we are this far the request is valid. Create some claims for the user
 	// and generate their token.
 	claims := auth.Claims{
 		StandardClaims: jwt.StandardClaims{

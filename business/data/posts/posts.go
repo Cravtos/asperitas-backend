@@ -44,7 +44,7 @@ type Setup struct {
 	db  *sqlx.DB
 }
 
-// New constructs a PostSetup for api access.
+// New constructs a post Setup for api access.
 func New(log *log.Logger, db *sqlx.DB) Setup {
 	return Setup{
 		log: log,
