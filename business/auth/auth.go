@@ -3,11 +3,23 @@ package auth
 
 import (
 	"crypto/rsa"
+	"github.com/cravtos/asperitas-backend/foundation/web"
+	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 )
+
+var (
+	ErrExpectedBearer = errors.New("expected authorization header format: bearer <token>")
+)
+
+type Data struct {
+	Token string
+	User  User
+}
 
 type User struct {
 	Username string `json:"username"`
@@ -23,7 +35,7 @@ const Key ctxKey = 1
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
 	jwt.StandardClaims
-	User User `json:"user"`
+	User User `json:"users"`
 }
 
 // Keys represents an in memory store of keys.
@@ -32,10 +44,10 @@ type Keys map[string]*rsa.PrivateKey
 // PublicKeyLookup defines the signature of a function to lookup public keys.
 //
 // In a production system, a key id (KID) is used to retrieve the correct
-// public key to parse a JWT for auth and claims. A key lookup function is
+// public key to parse a JWT for auth and claims. P key lookup function is
 // provided to perform the task of retrieving a KID for a given public key.
 //
-// A key lookup function is required for creating an Authenticator.
+// P key lookup function is required for creating an Authenticator.
 //
 // * Private keys should be rotated. During the transition period, tokens
 // signed with the old and new keys can coexist by looking up the correct
@@ -46,7 +58,7 @@ type Keys map[string]*rsa.PrivateKey
 type PublicKeyLookup func(kid string) (*rsa.PublicKey, error)
 
 // Auth is used to authenticate clients. It can generate a token for a
-// set of user claims and recreate the claims by parsing the token.
+// set of users claims and recreate the claims by parsing the token.
 type Auth struct {
 	mu        sync.RWMutex
 	algorithm string
@@ -75,7 +87,7 @@ func New(algorithm string, defaultKID string, lookup PublicKeyLookup, keys Keys)
 		}
 		kidID, ok := kid.(string)
 		if !ok {
-			return nil, errors.New("user token key id (kid) must be string")
+			return nil, errors.New("users token key id (kid) must be string")
 		}
 		return lookup(kidID)
 	}
@@ -113,7 +125,7 @@ func (a *Auth) RemoveKey(kid string) {
 	delete(a.keys, kid)
 }
 
-// GenerateToken generates a signed JWT token string representing the user Claims.
+// GenerateToken generates a signed JWT token string representing the users Claims.
 func (a *Auth) GenerateToken(kid string, claims Claims) (string, error) {
 	token := jwt.NewWithClaims(a.method, claims)
 	token.Header["kid"] = kid
@@ -151,4 +163,14 @@ func (a *Auth) ValidateToken(tokenStr string) (Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func (a *Auth) ValidateString(authStr string) (Claims, error) {
+	parts := strings.Split(authStr, " ")
+	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+		return Claims{}, web.NewRequestError(ErrExpectedBearer, http.StatusUnauthorized)
+	}
+
+	// Validate the token is signed by us.
+	return a.ValidateToken(parts[1])
 }

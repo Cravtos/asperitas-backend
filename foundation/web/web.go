@@ -23,7 +23,7 @@ type Values struct {
 	StatusCode int
 }
 
-// A Handler is a type that handles an http request within our own little mini
+// P Handler is a type that handles an http request within our own little mini
 // framework.
 type Handler func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
 
@@ -55,7 +55,7 @@ func NewApp(shutdown chan os.Signal, mw ...Middleware) *App {
 	}
 }
 
-// SignalShutdown is used to gracefully shutdown the app when an integrity
+// SignalShutdown is used to gracefully Shutdown the app when an integrity
 // issue is identified.
 func (a *App) SignalShutdown() {
 	a.shutdown <- syscall.SIGTERM
@@ -76,6 +76,34 @@ func (a *App) HandleDebug(method string, path string, handler Handler, mw ...Mid
 // to the application server mux.
 func (a *App) Handle(method string, path string, handler Handler, mw ...Middleware) {
 	a.handle(false, method, path, handler, mw...)
+}
+
+func (a *App) HandleGraphQL(method string, path string, handler Handler) {
+	a.handleGraphQL(method, path, handler)
+}
+
+func (a *App) handleGraphQL(method string, path string, handler Handler) {
+	handler = wrapMiddleware(a.mw, handler)
+
+	h := func(w http.ResponseWriter, r *http.Request) {
+
+		// Start or expand a distributed trace.
+		ctx := r.Context()
+
+		// Set the context with the required values to
+		// process the request.
+		v := Values{
+			Now: time.Now(),
+		}
+		ctx = context.WithValue(ctx, KeyValues, &v)
+
+		// Call the wrapped handler functions.
+		if err := handler(ctx, w, r); err != nil {
+			a.SignalShutdown()
+			return
+		}
+	}
+	a.mux.Handle(method, path, h)
 }
 
 // handle performs the real work of applying boilerplate and framework code
@@ -105,7 +133,7 @@ func (a *App) handle(debug bool, method string, path string, handler Handler, mw
 		// Set the context with the required values to
 		// process the request.
 		v := Values{
-			Now:     time.Now(),
+			Now: time.Now(),
 		}
 		ctx = context.WithValue(ctx, KeyValues, &v)
 

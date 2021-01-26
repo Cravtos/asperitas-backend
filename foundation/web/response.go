@@ -19,7 +19,7 @@ func Respond(ctx context.Context, w http.ResponseWriter, data interface{}, statu
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	// Set the status code for the request logger middleware.
 	// If the context is missing this value, request the service
-	// to be shutdown gracefully.
+	// to be Shutdown gracefully.
 	v, ok := ctx.Value(KeyValues).(*Values)
 	if !ok {
 		return NewShutdownError("web value missing from context")

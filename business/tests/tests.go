@@ -13,7 +13,7 @@ import (
 
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/schema"
-	"github.com/cravtos/asperitas-backend/business/data/user"
+	"github.com/cravtos/asperitas-backend/business/data/users"
 	"github.com/cravtos/asperitas-backend/foundation/database"
 	"github.com/jmoiron/sqlx"
 )
@@ -141,11 +141,11 @@ func NewIntegration(t *testing.T) *Test {
 	return &test
 }
 
-// Token generates an authenticated token for a user.
+// Token generates an authenticated token for a users.
 func (test *Test) Token(email, pass string) string {
 	test.t.Log("Generating token for test ...")
 
-	u := user.New(test.Log, test.DB)
+	u := users.New(test.Log, test.DB)
 	claims, err := u.Authenticate(context.Background(), email, pass, time.Now())
 	if err != nil {
 		test.t.Fatal(err)

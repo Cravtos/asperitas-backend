@@ -29,10 +29,10 @@ func Seed(db *sqlx.DB) error {
 // multiple queries as part of the same execution so this single large constant
 // may need to be broken up.
 const seeds = `
--- Create admin and regular User with password "gophers"
+-- Create admin and regular UserID with password "gophers"
 INSERT INTO users (user_id, name, password_hash, date_created) VALUES
 	('5cf37266-3473-4006-984f-9325122678b7', 'Admin Gopher', '$2a$10$1ggfMVZV6Js0ybvJufLRUOWHS5f6KneuP0XwwHpJ8L8ipdry9f2/a', '2019-03-24 00:00:00'),
-	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'User Gopher', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', '2019-03-24 00:00:00')
+	('45b5fbd3-755f-4379-8f07-a58d4a30fa2f', 'UserID Gopher', '$2a$10$9/XASPKBbJKVfCAZKDH.UuhsuALDr5vVm6VrYA9VFR8rccK86C1hW', '2019-03-24 00:00:00')
 	ON CONFLICT DO NOTHING;
 
 INSERT INTO posts (post_id, views, type, title, category, payload, date_created, user_id) VALUES
