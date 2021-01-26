@@ -69,6 +69,7 @@ type Vote struct {
 	AuthorID string `json:"author_id"`
 }
 
+//todo think how to implement these resolvers
 func (v *Vote) Author() *Author {
 	return &Author{}
 }

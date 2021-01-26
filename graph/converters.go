@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/posts"
 	"github.com/cravtos/asperitas-backend/graph/model"
 )
@@ -85,5 +86,19 @@ func prepareAuthor(author *posts.Author) *model.Author {
 	return &model.Author{
 		Username: author.Username,
 		AuthorID: author.ID,
+	}
+}
+
+func prepareAuthData(data auth.Data) *model.AuthData {
+	return &model.AuthData{
+		Token: data.Token,
+		User:  prepareUser(data.User),
+	}
+}
+
+func prepareUser(data auth.User) *model.User {
+	return &model.User{
+		Username: data.Username,
+		UserID:   data.ID,
 	}
 }
