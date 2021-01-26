@@ -51,7 +51,7 @@ type ComplexityRoot struct {
 
 	Author struct {
 		AuthorID func(childComplexity int) int
-		Posts    func(childComplexity int, category *model.Category) int
+		Posts    func(childComplexity int) int
 		Username func(childComplexity int) int
 	}
 
@@ -181,12 +181,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		args, err := ec.field_Author_posts_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Author.Posts(childComplexity, args["category"].(*model.Category)), true
+		return e.complexity.Author.Posts(childComplexity), true
 
 	case "Author.username":
 		if e.complexity.Author.Username == nil {
@@ -753,21 +748,6 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // region    ***************************** args.gotpl *****************************
 
-func (ec *executionContext) field_Author_posts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 *model.Category
-	if tmp, ok := rawArgs["category"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
-		arg0, err = ec.unmarshalOCategory2ᚖgithubᚗcomᚋcravtosᚋasperitasᚑbackendᚋgraphᚋmodelᚐCategory(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["category"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_create_comment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1209,21 +1189,14 @@ func (ec *executionContext) _Author_posts(ctx context.Context, field graphql.Col
 		Object:     "Author",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Author_posts_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Posts, nil
+		return obj.Posts(), nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1388,14 +1361,14 @@ func (ec *executionContext) _Comment_post(ctx context.Context, field graphql.Col
 		Object:     "Comment",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Post, nil
+		return obj.Post(), nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2932,14 +2905,14 @@ func (ec *executionContext) _Vote_author(ctx context.Context, field graphql.Coll
 		Object:     "Vote",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
+		IsMethod:   true,
 		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Author, nil
+		return obj.Author(), nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
