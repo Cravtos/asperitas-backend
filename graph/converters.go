@@ -1,28 +1,29 @@
-package rest
+package graph
 
 import (
 	"github.com/cravtos/asperitas-backend/business/data/posts"
+	"github.com/cravtos/asperitas-backend/graph/model"
 )
 
-func preparePostsToSend(postsRaw []posts.Info) []Info {
-	var posts []Info
+func preparePostsToSend(postsRaw []posts.Info) []model.Info {
+	var posts []model.Info
 	for _, postRaw := range postsRaw {
 		posts = append(posts, preparePostToSend(postRaw))
 	}
 	return posts
 }
 
-func preparePostToSend(postRaw posts.Info) Info {
-	var info Info
+func preparePostToSend(postRaw posts.Info) model.Info {
+	var info model.Info
 	if postRaw.Type == "link" || postRaw.Type == "url" {
-		info = InfoLink{
+		info = model.PostLink{
 			Type:             "link",
-			ID:               postRaw.ID,
+			PostID:           postRaw.ID,
 			Score:            postRaw.Score,
 			Views:            postRaw.Views,
 			Title:            postRaw.Title,
-			Payload:          postRaw.Payload,
-			Category:         postRaw.Category,
+			URL:              postRaw.Payload,
+			Category:         model.Category(postRaw.Category),
 			DateCreated:      postRaw.DateCreated,
 			Author:           prepareAuthor(postRaw.Author),
 			Votes:            prepareVotes(postRaw.Votes),
@@ -30,14 +31,14 @@ func preparePostToSend(postRaw posts.Info) Info {
 			UpvotePercentage: postRaw.UpvotePercentage,
 		}
 	} else {
-		info = InfoText{
+		info = model.PostText{
 			Type:             "text",
-			ID:               postRaw.ID,
+			PostID:           postRaw.ID,
 			Score:            postRaw.Score,
 			Views:            postRaw.Views,
 			Title:            postRaw.Title,
-			Payload:          postRaw.Payload,
-			Category:         postRaw.Category,
+			Text:             postRaw.Payload,
+			Category:         model.Category(postRaw.Category),
 			DateCreated:      postRaw.DateCreated,
 			Author:           prepareAuthor(postRaw.Author),
 			Votes:            prepareVotes(postRaw.Votes),
@@ -48,41 +49,41 @@ func preparePostToSend(postRaw posts.Info) Info {
 	return info
 }
 
-func prepareComments(commentsRaw []posts.Comment) []Comment {
-	comments := make([]Comment, 0)
+func prepareComments(commentsRaw []posts.Comment) []*model.Comment {
+	comments := make([]*model.Comment, 0)
 	for _, raw := range commentsRaw {
 		comments = append(comments, prepareComment(raw))
 	}
 	return comments
 }
 
-func prepareComment(raw posts.Comment) Comment {
-	return Comment{
+func prepareComment(raw posts.Comment) *model.Comment {
+	return &model.Comment{
 		DateCreated: raw.DateCreated,
 		Author:      prepareAuthor(&raw.Author),
 		Body:        raw.Body,
-		ID:          raw.ID,
+		CommentID:   raw.ID,
 	}
 }
 
-func prepareVotes(votesRaw []posts.Vote) []Vote {
-	votes := make([]Vote, 0)
+func prepareVotes(votesRaw []posts.Vote) []*model.Vote {
+	votes := make([]*model.Vote, 0)
 	for _, voteRaw := range votesRaw {
 		votes = append(votes, prepareVote(voteRaw))
 	}
 	return votes
 }
 
-func prepareVote(raw posts.Vote) Vote {
-	return Vote{
-		User: raw.UserID,
-		Vote: raw.Vote,
+func prepareVote(raw posts.Vote) *model.Vote {
+	return &model.Vote{
+		AuthorID: raw.UserID,
+		Vote:     raw.Vote,
 	}
 }
 
-func prepareAuthor(author *posts.Author) Author {
-	return Author{
+func prepareAuthor(author *posts.Author) *model.Author {
+	return &model.Author{
 		Username: author.Username,
-		ID:       author.ID,
+		AuthorID: author.ID,
 	}
 }

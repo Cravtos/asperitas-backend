@@ -78,31 +78,11 @@ func (a *App) Handle(method string, path string, handler Handler, mw ...Middlewa
 	a.handle(false, method, path, handler, mw...)
 }
 
-func (a *App) HandleGraphQL(method string, path string, handler Handler) {
+func (a *App) HandleGraphQL(method string, path string, handler http.HandlerFunc) {
 	a.handleGraphQL(method, path, handler)
 }
 
-func (a *App) handleGraphQL(method string, path string, handler Handler) {
-	handler = wrapMiddleware(a.mw, handler)
-
-	h := func(w http.ResponseWriter, r *http.Request) {
-
-		// Start or expand a distributed trace.
-		ctx := r.Context()
-
-		// Set the context with the required values to
-		// process the request.
-		v := Values{
-			Now: time.Now(),
-		}
-		ctx = context.WithValue(ctx, KeyValues, &v)
-
-		// Call the wrapped handler functions.
-		if err := handler(ctx, w, r); err != nil {
-			a.SignalShutdown()
-			return
-		}
-	}
+func (a *App) handleGraphQL(method string, path string, h http.HandlerFunc) {
 	a.mux.Handle(method, path, h)
 }
 

@@ -5,6 +5,8 @@ package graph
 
 import (
 	"context"
+	"github.com/cravtos/asperitas-backend/business/data/posts"
+	"github.com/pkg/errors"
 	"time"
 
 	"github.com/cravtos/asperitas-backend/graph/generated"
@@ -39,7 +41,10 @@ var au = &model.AuthData{
 	},
 }
 
-func (r *mutationResolver) CreatePost(ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string) (model.Info, error) {
+func (r *mutationResolver) CreatePost(
+	ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string,
+) (model.Info, error) {
+
 	return inf, nil
 }
 
@@ -76,17 +81,51 @@ func (r *mutationResolver) SignIn(ctx context.Context, name string, password str
 }
 
 func (r *queryResolver) AnyPost(ctx context.Context) (model.Info, error) {
-	return inf, nil
+	ps := posts.New(r.Log, r.DB)
+
+	infos, err := ps.Query(ctx)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
+	if len(infos) == 0 {
+		return nil, newPublicError(errors.New("there is no infos at all"))
+	}
+
+	return preparePostToSend(infos[0]), nil
 }
 
 func (r *queryResolver) Posts(ctx context.Context, category *model.Category, userID *string) ([]model.Info, error) {
-	i := make([]model.Info, 0)
-	i = append(i, inf)
-	return i, nil
+	ps := posts.New(r.Log, r.DB)
+	cat := "all"
+	us := ""
+	if category != nil {
+		cat = category.String()
+	}
+	if userID != nil {
+		us = *userID
+	}
+	infos, err := ps.ObtainPosts(ctx, cat, us)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
+	return preparePostsToSend(infos), nil
 }
 
 func (r *queryResolver) Post(ctx context.Context, postID string) (model.Info, error) {
-	return inf, nil
+	ps := posts.New(r.Log, r.DB)
+
+	info, err := ps.QueryByID(ctx, postID)
+	if err != nil {
+		switch err {
+		case posts.ErrInvalidPostID:
+			return nil, newPublicError(err)
+		case posts.ErrPostNotFound:
+			return nil, newPublicError(err)
+		default:
+			return nil, newPrivateError(err)
+		}
+	}
+	return preparePostToSend(info), nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

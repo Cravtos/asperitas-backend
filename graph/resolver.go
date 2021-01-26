@@ -11,7 +11,7 @@ import (
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	log  *log.Logger
-	db   *sqlx.DB
+	Log  *log.Logger
+	DB   *sqlx.DB
 	Auth *auth.Auth
 }

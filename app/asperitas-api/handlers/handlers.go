@@ -3,9 +3,10 @@
 package handlers
 
 import (
-	graphql2 "github.com/cravtos/asperitas-backend/app/asperitas-api/handlers/graphql"
+	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/cravtos/asperitas-backend/app/asperitas-api/handlers/rest"
-	"github.com/cravtos/asperitas-backend/business/data/postgql"
+	"github.com/cravtos/asperitas-backend/graph"
+	"github.com/cravtos/asperitas-backend/graph/generated"
 	"github.com/graphql-go/graphql"
 	"log"
 	"net/http"
@@ -75,13 +76,10 @@ func API(
 	app.Handle(http.MethodOptions, "/api/post/:post_id/downvote", cog.Allow("GET"))
 	app.Handle(http.MethodOptions, "/api/post/:post_id/unvote", cog.Allow("GET"))
 
-	gqlg := graphql2.PostGroupGQL{
-		P:      postgql.NewPostGQL(log, db),
-		Schema: gqlschema,
-		Auth:   a,
-	}
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
+		Log: log, DB: db, Auth: a}}))
 
-	app.HandleGraphQL(http.MethodPost, "/api/graphql", gqlg.Handle)
+	app.HandleGraphQL(http.MethodPost, "/api/graphql", srv.ServeHTTP)
 
 	return app
 }
