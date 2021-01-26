@@ -78,11 +78,13 @@ func (a *App) Handle(method string, path string, handler Handler, mw ...Middlewa
 	a.handle(false, method, path, handler, mw...)
 }
 
-func (a *App) HandleGraphQL(method string, path string, handler http.HandlerFunc) {
+func (a *App) HandleGraphQL(method string, path string, handler http.HandlerFunc, mw ...GQLMiddleware) {
 	a.handleGraphQL(method, path, handler)
 }
 
-func (a *App) handleGraphQL(method string, path string, h http.HandlerFunc) {
+func (a *App) handleGraphQL(method string, path string, h http.HandlerFunc, mw ...GQLMiddleware) {
+	// First wrap handler specific middleware around this handler.
+	h = wrapGQLMiddleware(mw, h)
 	a.mux.Handle(method, path, h)
 }
 

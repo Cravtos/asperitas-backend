@@ -79,7 +79,7 @@ func API(
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
 		Log: log, DB: db, Auth: a}}))
 
-	app.HandleGraphQL(http.MethodPost, "/api/graphql", srv.ServeHTTP)
+	app.HandleGraphQL(http.MethodPost, "/api/graphql", srv.ServeHTTP, mid.GQLAuth())
 
 	return app
 }
