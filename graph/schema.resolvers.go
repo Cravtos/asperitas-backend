@@ -5,47 +5,45 @@ package graph
 
 import (
 	"context"
-	"github.com/cravtos/asperitas-backend/business/data/posts"
-	"github.com/pkg/errors"
+	"errors"
 	"time"
 
+	"github.com/cravtos/asperitas-backend/business/auth"
+	"github.com/cravtos/asperitas-backend/business/data/posts"
+	"github.com/cravtos/asperitas-backend/business/mid"
+	"github.com/cravtos/asperitas-backend/foundation/web"
 	"github.com/cravtos/asperitas-backend/graph/generated"
 	"github.com/cravtos/asperitas-backend/graph/model"
 )
 
-//todo create resolvers
+func (r *mutationResolver) CreatePost(ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string) (model.Info, error) {
+	claims, err := r.Auth.ValidateString(mid.GetAuthString(ctx))
+	if err != nil {
+		if err == auth.ErrExpectedBearer {
+			return nil, newPublicError(err)
+		}
+		return nil, newPrivateError(err)
+	}
 
-var inf = model.PostLink{
-	PostID:           "id",
-	Title:            "title",
-	Type:             "type",
-	Score:            0,
-	Views:            0,
-	Category:         model.CategoryFashion,
-	DateCreated:      time.Time{},
-	UpvotePercentage: 0,
-	Author: &model.Author{
-		Username: "author",
-		AuthorID: "author_id",
-	},
-	Votes:    make([]*model.Vote, 0),
-	Comments: make([]*model.Comment, 0),
-	URL:      "URL",
-}
+	ps := posts.New(r.Log, r.DB)
+	np := posts.NewPost{
+		Title:    title,
+		Type:     string(typeArg),
+		Category: string(category),
+		Text:     payload,
+		URL:      payload,
+	}
+	r.Log.Println("hey res")
+	v, ok := ctx.Value(web.KeyValues).(web.Values)
+	if !ok {
+		return nil, web.NewShutdownError("web value missing from context")
+	}
+	info, err := ps.Create(ctx, claims, np, v.Now)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
 
-var au = &model.AuthData{
-	Token: "token",
-	User: &model.User{
-		Username: "username",
-		UserID:   "user_id",
-	},
-}
-
-func (r *mutationResolver) CreatePost(
-	ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string,
-) (model.Info, error) {
-
-	return inf, nil
+	return preparePostToSend(info), nil
 }
 
 func (r *mutationResolver) DeletePost(ctx context.Context, postID string) (model.Info, error) {
@@ -136,3 +134,34 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+var inf = model.PostLink{
+	PostID:           "id",
+	Title:            "title",
+	Type:             "type",
+	Score:            0,
+	Views:            0,
+	Category:         model.CategoryFashion,
+	DateCreated:      time.Time{},
+	UpvotePercentage: 0,
+	Author: &model.Author{
+		Username: "author",
+		AuthorID: "author_id",
+	},
+	Votes:    make([]*model.Vote, 0),
+	Comments: make([]*model.Comment, 0),
+	URL:      "URL",
+}
+var au = &model.AuthData{
+	Token: "token",
+	User: &model.User{
+		Username: "username",
+		UserID:   "user_id",
+	},
+}

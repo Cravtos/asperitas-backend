@@ -651,23 +651,22 @@ type Mutation {
 }
 
 enum Category {
-  ALL
-  MUSIC
-  FUNNY
-  VIDEOS
-  PROGRAMMING
-  NEWS
-  FASHION
+  all
+  music
+  funny
+  videos
+  programming
+  news
+ fashion
 }
 
 enum PostType{
-  LINK
-  TEXT
+  link
+  text
 }
 
 interface Info {
   post_id: ID!
-  # The name of the character
   title: String!
   type : PostType!
   score : Int!
@@ -682,7 +681,6 @@ interface Info {
 
 type PostLink implements Info {
   post_id: ID!
-  # The name of the character
   title: String!
   type : PostType!
   score : Int!
@@ -698,7 +696,6 @@ type PostLink implements Info {
 
 type PostText implements Info {
   post_id: ID!
-  # The name of the character
   title: String!
   type : PostType!
   score : Int!

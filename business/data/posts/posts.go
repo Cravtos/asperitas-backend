@@ -26,7 +26,7 @@ var (
 	ErrForbidden = errors.New("attempted action is not allowed")
 
 	//ErrWrongPostType is used when users tries to create posts with incorrect type.
-	ErrWrongPostType = errors.New("new posts should be of type url or text")
+	ErrWrongPostType = errors.New("new posts should be of type link or text")
 
 	// ErrPostNotFound is used when a specific Post is requested but does not exist.
 	ErrPostNotFound = errors.New("posts not found")

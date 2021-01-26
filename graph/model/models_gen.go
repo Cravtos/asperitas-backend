@@ -11,13 +11,13 @@ import (
 type Category string
 
 const (
-	CategoryAll         Category = "ALL"
-	CategoryMusic       Category = "MUSIC"
-	CategoryFunny       Category = "FUNNY"
-	CategoryVideos      Category = "VIDEOS"
-	CategoryProgramming Category = "PROGRAMMING"
-	CategoryNews        Category = "NEWS"
-	CategoryFashion     Category = "FASHION"
+	CategoryAll         Category = "all"
+	CategoryMusic       Category = "music"
+	CategoryFunny       Category = "funny"
+	CategoryVideos      Category = "videos"
+	CategoryProgramming Category = "programming"
+	CategoryNews        Category = "news"
+	CategoryFashion     Category = "fashion"
 )
 
 var AllCategory = []Category{
@@ -62,8 +62,8 @@ func (e Category) MarshalGQL(w io.Writer) {
 type PostType string
 
 const (
-	PostTypeLink PostType = "LINK"
-	PostTypeText PostType = "TEXT"
+	PostTypeLink PostType = "link"
+	PostTypeText PostType = "text"
 )
 
 var AllPostType = []PostType{

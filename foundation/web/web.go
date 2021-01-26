@@ -79,13 +79,26 @@ func (a *App) Handle(method string, path string, handler Handler, mw ...Middlewa
 }
 
 func (a *App) HandleGraphQL(method string, path string, handler http.HandlerFunc, mw ...GQLMiddleware) {
-	a.handleGraphQL(method, path, handler)
+	a.handleGraphQL(method, path, handler, mw...)
 }
 
 func (a *App) handleGraphQL(method string, path string, h http.HandlerFunc, mw ...GQLMiddleware) {
 	// First wrap handler specific middleware around this handler.
 	h = wrapGQLMiddleware(mw, h)
-	a.mux.Handle(method, path, h)
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Set the context with the required values to
+		// process the request.
+		v := Values{
+			Now: time.Now(),
+		}
+		ctx := context.WithValue(r.Context(), KeyValues, v)
+
+		// and call the next with our new context
+		r = r.WithContext(ctx)
+		// Call the wrapped handler functions.
+		h(w, r)
+	}
+	a.mux.Handle(method, path, handler)
 }
 
 // handle performs the real work of applying boilerplate and framework code

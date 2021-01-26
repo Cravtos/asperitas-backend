@@ -18,13 +18,12 @@ func GQLAuth() func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			c := r.Header.Get("authorization")
-
 			// put it in context
 			ctx := context.WithValue(r.Context(), userCtxKey, c)
 
 			// and call the next with our new context
 			r = r.WithContext(ctx)
-			next.ServeHTTP(w, r)
+			next(w, r)
 		}
 	}
 }
