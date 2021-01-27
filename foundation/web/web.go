@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/dimfeld/httptreemux/v5"
@@ -39,12 +38,6 @@ func NewApp(shutdown chan os.Signal) *App {
 		mux:      mux,
 		shutdown: shutdown,
 	}
-}
-
-// SignalShutdown is used to gracefully Shutdown the app when an integrity
-// issue is identified.
-func (a *App) SignalShutdown() {
-	a.shutdown <- syscall.SIGTERM
 }
 
 // ServeHTTP implements the http.Handler interface.

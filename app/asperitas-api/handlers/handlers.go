@@ -27,6 +27,8 @@ func API(shutdown chan os.Signal, log *log.Logger, a *auth.Auth, db *sqlx.DB) ht
 	config := generated.Config{Resolvers: &graph.Resolver{Log: log, DB: db, Auth: a}}
 	es := generated.NewExecutableSchema(config)
 	srv := handler.NewDefaultServer(es)
+	errSetup := graph.NewSetup(log)
+	srv.SetErrorPresenter(errSetup.ErrorPresenter)
 
 	// Register GraphQL endpoint
 	app.HandleGraphQL(http.MethodPost, "/api/graphql", srv.ServeHTTP, mid.Auth())
