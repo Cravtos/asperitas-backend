@@ -1,20 +1,24 @@
 type Query {
   any_post: Info
-  posts(category : Category, user_id : ID) : [Info!]
-  post(post_id : ID!) : Info
-
+  posts(category: Category, user_id: ID): [Info!]
+  post(post_id: ID!): Info
 }
 
 type Mutation {
-  create_post(type : PostType!, title : String!, category : Category!, payload: String!) : Info
-  delete_post(post_id : ID!) : Info
-  create_comment(post_id : ID!, text : String!) : Info
-  delete_comment(post_id : ID!, comment_id : ID!) : Info
-  upvote(post_id : ID!) : Info
-  downvote(post_id : ID!) : Info
-  unvote(post_id : ID!) : Info
-  register(name : String!, password : String!) : AuthData
-  sign_in(name : String!, password : String!) : AuthData
+  create_post(
+    type: PostType!
+    title: String!
+    category: Category!
+    payload: String!
+  ): Info
+  delete_post(post_id: ID!): Info
+  create_comment(post_id: ID!, text: String!): Info
+  delete_comment(post_id: ID!, comment_id: ID!): Info
+  upvote(post_id: ID!): Info
+  downvote(post_id: ID!): Info
+  unvote(post_id: ID!): Info
+  register(name: String!, password: String!): AuthData
+  sign_in(name: String!, password: String!): AuthData
 }
 
 enum Category {
@@ -24,10 +28,10 @@ enum Category {
   videos
   programming
   news
- fashion
+  fashion
 }
 
-enum PostType{
+enum PostType {
   link
   text
 }
@@ -35,73 +39,73 @@ enum PostType{
 interface Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
 }
 
 type PostLink implements Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
-  url : String!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
+  url: String!
 }
 
 type PostText implements Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
-  text : String!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
+  text: String!
 }
 
 type Author {
   username: String!
-  author_id : ID!
-  posts(category : Category) : [Info!]
+  author_id: ID!
+  posts(category: Category): [Info!]
 }
 
 type Vote {
   vote: Int!
-  author_id : ID!
-  author : Author!
+  author_id: ID!
+  author: Author!
 }
 
 type Comment {
   body: String!
-  comment_id : ID!
-  author : Author!
-  date_created : Time!
-  post : Info
+  comment_id: ID!
+  author: Author!
+  date_created: Time!
+  post: Info
 }
 
 type User {
   username: String!
-  user_id : ID!
+  user_id: ID!
 }
 type AuthData {
   token: String!
-  user : User!
+  user: User!
 }
 scalar Time
