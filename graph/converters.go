@@ -64,6 +64,7 @@ func prepareComment(raw posts.Comment) *model.Comment {
 		Author:      prepareAuthor(&raw.Author),
 		Body:        raw.Body,
 		CommentID:   raw.ID,
+		PostID:      raw.PostID,
 	}
 }
 

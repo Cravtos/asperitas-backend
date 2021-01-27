@@ -27,6 +27,7 @@ type Comment struct {
 	CommentID   string    `json:"comment_id"`
 	Author      *Author   `json:"author"`
 	DateCreated time.Time `json:"date_created"`
+	PostID      string
 }
 
 type PostLink struct {
@@ -67,17 +68,4 @@ type User struct {
 type Vote struct {
 	Vote     int    `json:"vote"`
 	AuthorID string `json:"author_id"`
-}
-
-//todo think how to implement these resolvers
-func (v *Vote) Author() *Author {
-	return &Author{}
-}
-
-func (c *Comment) Post() Info {
-	return PostLink{}
-}
-
-func (a *Author) Posts() []Info {
-	return make([]Info, 0)
 }

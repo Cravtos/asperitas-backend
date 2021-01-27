@@ -6,7 +6,6 @@ package graph
 import (
 	"context"
 	"errors"
-
 	"github.com/cravtos/asperitas-backend/business/auth"
 	"github.com/cravtos/asperitas-backend/business/data/posts"
 	"github.com/cravtos/asperitas-backend/business/data/users"
@@ -16,6 +15,32 @@ import (
 	"github.com/cravtos/asperitas-backend/graph/model"
 	errs "github.com/pkg/errors"
 )
+
+func (r *authorResolver) Posts(ctx context.Context, obj *model.Author, category *model.Category) ([]model.Info, error) {
+	ps := posts.New(r.Log, r.DB)
+	cat := "all"
+	if category != nil {
+		cat = category.String()
+	}
+
+	infos, err := ps.ObtainPosts(ctx, cat, obj.AuthorID)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
+
+	return preparePostsToSend(infos), nil
+}
+
+func (r *commentResolver) Post(ctx context.Context, obj *model.Comment) (model.Info, error) {
+	ps := posts.New(r.Log, r.DB)
+
+	info, err := ps.QueryByID(ctx, obj.PostID)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
+
+	return preparePostToSend(info), nil
+}
 
 func (r *mutationResolver) CreatePost(ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string) (model.Info, error) {
 	claims, err := r.Auth.ValidateString(mid.GetAuthString(ctx))
@@ -321,11 +346,33 @@ func (r *queryResolver) Post(ctx context.Context, postID string) (model.Info, er
 	return preparePostToSend(info), nil
 }
 
+func (r *voteResolver) Author(ctx context.Context, obj *model.Vote) (*model.Author, error) {
+	ps := posts.New(r.Log, r.DB)
+
+	author, err := ps.AuthorByID(ctx, obj.AuthorID)
+	if err != nil {
+		return nil, newPrivateError(err)
+	}
+	return prepareAuthor(&author), nil
+}
+
+// Author returns generated.AuthorResolver implementation.
+func (r *Resolver) Author() generated.AuthorResolver { return &authorResolver{r} }
+
+// Comment returns generated.CommentResolver implementation.
+func (r *Resolver) Comment() generated.CommentResolver { return &commentResolver{r} }
+
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
+// Vote returns generated.VoteResolver implementation.
+func (r *Resolver) Vote() generated.VoteResolver { return &voteResolver{r} }
+
+type authorResolver struct{ *Resolver }
+type commentResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+type voteResolver struct{ *Resolver }

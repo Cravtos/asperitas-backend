@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -36,8 +37,11 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Author() AuthorResolver
+	Comment() CommentResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Vote() VoteResolver
 }
 
 type DirectiveRoot struct {
@@ -51,7 +55,7 @@ type ComplexityRoot struct {
 
 	Author struct {
 		AuthorID func(childComplexity int) int
-		Posts    func(childComplexity int) int
+		Posts    func(childComplexity int, category *model.Category) int
 		Username func(childComplexity int) int
 	}
 
@@ -123,6 +127,12 @@ type ComplexityRoot struct {
 	}
 }
 
+type AuthorResolver interface {
+	Posts(ctx context.Context, obj *model.Author, category *model.Category) ([]model.Info, error)
+}
+type CommentResolver interface {
+	Post(ctx context.Context, obj *model.Comment) (model.Info, error)
+}
 type MutationResolver interface {
 	CreatePost(ctx context.Context, typeArg model.PostType, title string, category model.Category, payload string) (model.Info, error)
 	DeletePost(ctx context.Context, postID string) (model.Info, error)
@@ -138,6 +148,9 @@ type QueryResolver interface {
 	AnyPost(ctx context.Context) (model.Info, error)
 	Posts(ctx context.Context, category *model.Category, userID *string) ([]model.Info, error)
 	Post(ctx context.Context, postID string) (model.Info, error)
+}
+type VoteResolver interface {
+	Author(ctx context.Context, obj *model.Vote) (*model.Author, error)
 }
 
 type executableSchema struct {
@@ -181,7 +194,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Author.Posts(childComplexity), true
+		args, err := ec.field_Author_posts_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Author.Posts(childComplexity, args["category"].(*model.Category)), true
 
 	case "Author.username":
 		if e.complexity.Author.Username == nil {
@@ -633,21 +651,25 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "graph/schema.graphqls", Input: `type Query {
   any_post: Info
-  posts(category : Category, user_id : ID) : [Info!]
-  post(post_id : ID!) : Info
-
+  posts(category: Category, user_id: ID): [Info!]
+  post(post_id: ID!): Info
 }
 
 type Mutation {
-  create_post(type : PostType!, title : String!, category : Category!, payload: String!) : Info
-  delete_post(post_id : ID!) : Info
-  create_comment(post_id : ID!, text : String!) : Info
-  delete_comment(post_id : ID!, comment_id : ID!) : Info
-  upvote(post_id : ID!) : Info
-  downvote(post_id : ID!) : Info
-  unvote(post_id : ID!) : Info
-  register(name : String!, password : String!) : AuthData
-  sign_in(name : String!, password : String!) : AuthData
+  create_post(
+    type: PostType!
+    title: String!
+    category: Category!
+    payload: String!
+  ): Info
+  delete_post(post_id: ID!): Info
+  create_comment(post_id: ID!, text: String!): Info
+  delete_comment(post_id: ID!, comment_id: ID!): Info
+  upvote(post_id: ID!): Info
+  downvote(post_id: ID!): Info
+  unvote(post_id: ID!): Info
+  register(name: String!, password: String!): AuthData
+  sign_in(name: String!, password: String!): AuthData
 }
 
 enum Category {
@@ -657,10 +679,10 @@ enum Category {
   videos
   programming
   news
- fashion
+  fashion
 }
 
-enum PostType{
+enum PostType {
   link
   text
 }
@@ -668,82 +690,98 @@ enum PostType{
 interface Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
 }
 
 type PostLink implements Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
-  url : String!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
+  url: String!
 }
 
 type PostText implements Info {
   post_id: ID!
   title: String!
-  type : PostType!
-  score : Int!
-  views : Int!
-  category : Category!
-  date_created : Time!
-  upvote_percentage : Int!
-  author : Author!
-  votes : [Vote!]!
-  Comments : [Comment!]!
-  text : String!
+  type: PostType!
+  score: Int!
+  views: Int!
+  category: Category!
+  date_created: Time!
+  upvote_percentage: Int!
+  author: Author!
+  votes: [Vote!]!
+  Comments: [Comment!]!
+  text: String!
 }
 
 type Author {
   username: String!
-  author_id : ID!
-  posts(category : Category) : [Info!]
+  author_id: ID!
+  posts(category: Category): [Info!]
 }
 
 type Vote {
   vote: Int!
-  author_id : ID!
-  author : Author!
+  author_id: ID!
+  author: Author!
 }
 
 type Comment {
   body: String!
-  comment_id : ID!
-  author : Author!
-  date_created : Time!
-  post : Info
+  comment_id: ID!
+  author: Author!
+  date_created: Time!
+  post: Info
 }
 
 type User {
   username: String!
-  user_id : ID!
+  user_id: ID!
 }
 type AuthData {
   token: String!
-  user : User!
+  user: User!
 }
-scalar Time`, BuiltIn: false},
+scalar Time
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Author_posts_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.Category
+	if tmp, ok := rawArgs["category"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+		arg0, err = ec.unmarshalOCategory2ᚖgithubᚗcomᚋcravtosᚋasperitasᚑbackendᚋgraphᚋmodelᚐCategory(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["category"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_create_comment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -1187,13 +1225,20 @@ func (ec *executionContext) _Author_posts(ctx context.Context, field graphql.Col
 		Field:      field,
 		Args:       nil,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Author_posts_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Posts(), nil
+		return ec.resolvers.Author().Posts(rctx, obj, args["category"].(*model.Category))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1359,13 +1404,13 @@ func (ec *executionContext) _Comment_post(ctx context.Context, field graphql.Col
 		Field:      field,
 		Args:       nil,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Post(), nil
+		return ec.resolvers.Comment().Post(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2903,13 +2948,13 @@ func (ec *executionContext) _Vote_author(ctx context.Context, field graphql.Coll
 		Field:      field,
 		Args:       nil,
 		IsMethod:   true,
-		IsResolver: false,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Author(), nil
+		return ec.resolvers.Vote().Author(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4090,15 +4135,24 @@ func (ec *executionContext) _Author(ctx context.Context, sel ast.SelectionSet, o
 		case "username":
 			out.Values[i] = ec._Author_username(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "author_id":
 			out.Values[i] = ec._Author_author_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "posts":
-			out.Values[i] = ec._Author_posts(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Author_posts(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4124,25 +4178,34 @@ func (ec *executionContext) _Comment(ctx context.Context, sel ast.SelectionSet, 
 		case "body":
 			out.Values[i] = ec._Comment_body(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "comment_id":
 			out.Values[i] = ec._Comment_comment_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "author":
 			out.Values[i] = ec._Comment_author(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "date_created":
 			out.Values[i] = ec._Comment_date_created(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "post":
-			out.Values[i] = ec._Comment_post(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Comment_post(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4471,18 +4534,27 @@ func (ec *executionContext) _Vote(ctx context.Context, sel ast.SelectionSet, obj
 		case "vote":
 			out.Values[i] = ec._Vote_vote(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "author_id":
 			out.Values[i] = ec._Vote_author_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "author":
-			out.Values[i] = ec._Vote_author(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Vote_author(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4738,6 +4810,10 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) marshalNAuthor2githubᚗcomᚋcravtosᚋasperitasᚑbackendᚋgraphᚋmodelᚐAuthor(ctx context.Context, sel ast.SelectionSet, v model.Author) graphql.Marshaler {
+	return ec._Author(ctx, sel, &v)
+}
 
 func (ec *executionContext) marshalNAuthor2ᚖgithubᚗcomᚋcravtosᚋasperitasᚑbackendᚋgraphᚋmodelᚐAuthor(ctx context.Context, sel ast.SelectionSet, v *model.Author) graphql.Marshaler {
 	if v == nil {
