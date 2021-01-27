@@ -34,7 +34,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, typeArg model.PostTyp
 		Text:     payload,
 		URL:      payload,
 	}
-	r.Log.Println("hey res")
 	v, ok := ctx.Value(web.KeyValues).(web.Values)
 	if !ok {
 		return nil, web.NewShutdownError("web value missing from context")

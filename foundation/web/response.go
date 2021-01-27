@@ -3,10 +3,8 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"strings"
-
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 // MessageResponse is used to answer user about result of some operations
@@ -75,13 +73,4 @@ func RespondError(ctx context.Context, w http.ResponseWriter, err error) error {
 	}
 
 	return nil
-}
-
-// AllowMethods responds with Access-Control-Allow-Methods header set to methods.
-func AllowMethods(ctx context.Context, w http.ResponseWriter, methods []string) error {
-	// todo: it may be better to get Access-Control-Allow-Headers as an argument
-
-	w.Header().Set("Access-Control-Allow-Methods", strings.Join(methods, ", "))
-	w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
-	return Respond(ctx, w, nil, http.StatusNoContent)
 }
