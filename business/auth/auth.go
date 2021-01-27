@@ -3,8 +3,6 @@ package auth
 
 import (
 	"crypto/rsa"
-	"github.com/cravtos/asperitas-backend/foundation/web"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -168,7 +166,7 @@ func (a *Auth) ValidateToken(tokenStr string) (Claims, error) {
 func (a *Auth) ValidateString(authStr string) (Claims, error) {
 	parts := strings.Split(authStr, " ")
 	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-		return Claims{}, web.NewRequestError(ErrExpectedBearer, http.StatusUnauthorized)
+		return Claims{}, ErrExpectedBearer
 	}
 
 	// Validate the token is signed by us.
