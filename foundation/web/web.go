@@ -45,13 +45,13 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.mux.ServeHTTP(w, r)
 }
 
-// HandleGraphQL sets a handler function for a given HTTP method and path pair
+// Handle sets a handler function for a given HTTP method and path pair
 // to the application server mux.
-func (a *App) HandleGraphQL(method string, path string, handler http.HandlerFunc, mw ...GQLMiddleware) {
-	a.handleGraphQL(method, path, handler, mw...)
+func (a *App) Handle(method string, path string, handler http.HandlerFunc, mw ...GQLMiddleware) {
+	a.handle(method, path, handler, mw...)
 }
 
-func (a *App) handleGraphQL(method string, path string, h http.HandlerFunc, mw ...GQLMiddleware) {
+func (a *App) handle(method string, path string, h http.HandlerFunc, mw ...GQLMiddleware) {
 	// First wrap handler specific middleware around this handler.
 	h = wrapGQLMiddleware(mw, h)
 	handler := func(w http.ResponseWriter, r *http.Request) {

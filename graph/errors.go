@@ -15,8 +15,8 @@ type setup struct {
 	shutdown chan os.Signal
 }
 
-func NewSetup(log *log.Logger) *setup {
-	return &setup{log: log}
+func NewSetup(log *log.Logger, shutdown chan os.Signal) *setup {
+	return &setup{log: log, shutdown: shutdown}
 }
 
 type PublicError struct {
