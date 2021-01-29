@@ -102,8 +102,7 @@ func (u User) Delete(ctx context.Context, claims auth.Claims, userID string) err
 func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]Info, error) {
 
 	const q = `
-	SELECT
-		*
+	SELECT user_id as ID, name as Name, password_hash as PasswordHash, date_created as DateCreated
 	FROM
 		users
 	ORDER BY
@@ -138,7 +137,7 @@ func (u User) QueryByID(ctx context.Context, claims auth.Claims, userID string) 
 
 	const q = `
 	SELECT
-		*
+		user_id as ID, name as Name, password_hash as PasswordHash, date_created as DateCreated
 	FROM
 		users
 	WHERE 
@@ -164,7 +163,7 @@ func (u User) QueryByName(ctx context.Context, claims auth.Claims, name string) 
 
 	const q = `
 	SELECT
-		*
+		user_id as ID, name as Name, password_hash as PasswordHash, date_created as DateCreated
 	FROM
 		users
 	WHERE

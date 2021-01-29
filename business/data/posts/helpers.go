@@ -77,7 +77,7 @@ func score(votes []Vote) int {
 	return score
 }
 
-//convertComments turns slice of db.CommentWithUserDB to slice of Comments
+// convertComments turns slice of db.CommentWithUserDB to slice of Comments
 func convertComments(commentsDB []db.CommentWithUserDB) []Comment {
 	comments := make([]Comment, 0)
 	for _, comment := range commentsDB {
@@ -86,7 +86,7 @@ func convertComments(commentsDB []db.CommentWithUserDB) []Comment {
 	return comments
 }
 
-//convertComment turns db.CommentWithUserDB to Comment
+// convertComment turns db.CommentWithUserDB to Comment
 func convertComment(commentDB db.CommentWithUserDB) Comment {
 	author := Author{
 		Username: commentDB.AuthorName,
@@ -101,7 +101,7 @@ func convertComment(commentDB db.CommentWithUserDB) Comment {
 	return comment
 }
 
-//convertVotes turns slice of db.VoteDB to slice of Vote
+// convertVotes turns slice of db.VoteDB to slice of Vote
 func convertVotes(votesDB []db.VoteDB) []Vote {
 	votes := make([]Vote, 0)
 	for _, vote := range votesDB {
@@ -110,17 +110,17 @@ func convertVotes(votesDB []db.VoteDB) []Vote {
 	return votes
 }
 
-//convertVote turns db.CommentWithUserDB to Comment
+// convertVote turns db.CommentWithUserDB to Comment
 func convertVote(voteDB db.VoteDB) Vote {
 	return Vote{UserID: voteDB.UserID, Vote: voteDB.Vote}
 }
 
-//convertUser turns db.UserDB to Author
+// convertUser turns db.UserDB to Author
 func convertUser(userDB db.UserDB) Author {
 	return Author{Username: userDB.Username, ID: userDB.ID}
 }
 
-//fillInfos fills slice of Info with votes, comments and author for each Post
+// fillInfos fills slice of Info with votes, comments and author for each Post
 func (p Setup) fillInfos(ctx context.Context, posts []Info) ([]Info, error) {
 	for i, post := range posts {
 		filledPost, err := p.fillInfo(ctx, post)
@@ -132,7 +132,7 @@ func (p Setup) fillInfos(ctx context.Context, posts []Info) ([]Info, error) {
 	return posts, nil
 }
 
-//fillInfo fills Info with votes, comments and author
+// fillInfo fills Info with votes, comments and author
 func (p Setup) fillInfo(ctx context.Context, src Info) (Info, error) {
 	dbs := db.NewDBset(p.log, p.db)
 

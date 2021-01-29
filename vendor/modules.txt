@@ -1,11 +1,5 @@
 # github.com/99designs/gqlgen v0.13.0
 ## explicit
-github.com/99designs/gqlgen
-github.com/99designs/gqlgen/api
-github.com/99designs/gqlgen/cmd
-github.com/99designs/gqlgen/codegen
-github.com/99designs/gqlgen/codegen/config
-github.com/99designs/gqlgen/codegen/templates
 github.com/99designs/gqlgen/complexity
 github.com/99designs/gqlgen/graphql
 github.com/99designs/gqlgen/graphql/errcode
@@ -15,23 +9,11 @@ github.com/99designs/gqlgen/graphql/handler/extension
 github.com/99designs/gqlgen/graphql/handler/lru
 github.com/99designs/gqlgen/graphql/handler/transport
 github.com/99designs/gqlgen/graphql/introspection
-github.com/99designs/gqlgen/graphql/playground
-github.com/99designs/gqlgen/handler
-github.com/99designs/gqlgen/internal/code
-github.com/99designs/gqlgen/internal/imports
-github.com/99designs/gqlgen/internal/rewrite
-github.com/99designs/gqlgen/plugin
-github.com/99designs/gqlgen/plugin/federation
-github.com/99designs/gqlgen/plugin/modelgen
-github.com/99designs/gqlgen/plugin/resolvergen
-github.com/99designs/gqlgen/plugin/servergen
 # github.com/agnivade/levenshtein v1.0.3
 github.com/agnivade/levenshtein
 # github.com/ardanlabs/conf v1.3.3
 ## explicit
 github.com/ardanlabs/conf
-# github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
-github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 ## explicit
 github.com/dgrijalva/jwt-go
@@ -61,19 +43,6 @@ github.com/google/go-cmp/cmp/internal/value
 github.com/google/uuid
 # github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
-# github.com/graphql-go/graphql v0.7.9
-## explicit
-github.com/graphql-go/graphql
-github.com/graphql-go/graphql/gqlerrors
-github.com/graphql-go/graphql/language/ast
-github.com/graphql-go/graphql/language/kinds
-github.com/graphql-go/graphql/language/lexer
-github.com/graphql-go/graphql/language/location
-github.com/graphql-go/graphql/language/parser
-github.com/graphql-go/graphql/language/printer
-github.com/graphql-go/graphql/language/source
-github.com/graphql-go/graphql/language/typeInfo
-github.com/graphql-go/graphql/language/visitor
 # github.com/hashicorp/golang-lru v0.5.0
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
@@ -89,9 +58,6 @@ github.com/leodido/go-urn
 github.com/lib/pq
 github.com/lib/pq/oid
 github.com/lib/pq/scram
-# github.com/matryer/moq v0.0.0-20200106131100-75d0ddfc0007
-github.com/matryer/moq
-github.com/matryer/moq/pkg/moq
 # github.com/mitchellh/mapstructure v0.0.0-20180203102830-a4e142e9c047
 github.com/mitchellh/mapstructure
 # github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e
@@ -99,16 +65,10 @@ github.com/mitchellh/mapstructure
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/russross/blackfriday/v2 v2.0.1
-github.com/russross/blackfriday/v2
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-github.com/shurcooL/sanitized_anchor_name
-# github.com/urfave/cli/v2 v2.1.1
-github.com/urfave/cli/v2
-# github.com/vektah/dataloaden v0.2.1-0.20190515034641-a19b9a6e7c9e
-github.com/vektah/dataloaden
-github.com/vektah/dataloaden/pkg/generator
+# github.com/stretchr/testify v1.6.1
+## explicit
 # github.com/vektah/gqlparser/v2 v2.1.0
+## explicit
 github.com/vektah/gqlparser/v2
 github.com/vektah/gqlparser/v2/ast
 github.com/vektah/gqlparser/v2/gqlerror
@@ -116,31 +76,13 @@ github.com/vektah/gqlparser/v2/lexer
 github.com/vektah/gqlparser/v2/parser
 github.com/vektah/gqlparser/v2/validator
 github.com/vektah/gqlparser/v2/validator/rules
-# go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.14.0
-## explicit
-# go.opentelemetry.io/otel v0.14.0
-## explicit
-# go.opentelemetry.io/otel/exporters/trace/zipkin v0.14.0
-## explicit
-# go.opentelemetry.io/otel/sdk v0.14.0
-## explicit
 # golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c
 ## explicit
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/tools v0.0.0-20200114235610-7ae403b6b589
-golang.org/x/tools/go/ast/astutil
-golang.org/x/tools/go/gcexportdata
-golang.org/x/tools/go/internal/gcimporter
-golang.org/x/tools/go/internal/packagesdriver
-golang.org/x/tools/go/packages
-golang.org/x/tools/imports
-golang.org/x/tools/internal/fastwalk
-golang.org/x/tools/internal/gopathwalk
-golang.org/x/tools/internal/imports
-golang.org/x/tools/internal/module
-golang.org/x/tools/internal/semver
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+## explicit
+# google.golang.org/appengine v1.4.0
 ## explicit
 # gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b
 ## explicit
@@ -150,5 +92,3 @@ golang.org/x/tools/internal/semver
 ## explicit
 gopkg.in/go-playground/validator.v9
 gopkg.in/go-playground/validator.v9/translations/en
-# gopkg.in/yaml.v2 v2.2.4
-gopkg.in/yaml.v2

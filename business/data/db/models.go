@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// postDB represents an individual posts in database.
+// PostDB represents an individual posts in database.
 type PostDB struct {
 	ID          string    `db:"post_id"`
 	Views       int       `db:"views"`
@@ -37,7 +37,6 @@ type CommentDB struct {
 	ID          string    `db:"comment_id"`
 }
 
-// CommentDB represents an individual comment in database
 type CommentWithUserDB struct {
 	AuthorName  string    `db:"name"`
 	DateCreated time.Time `db:"date_created"`

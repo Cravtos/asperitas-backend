@@ -3,8 +3,6 @@ package auth
 
 import (
 	"crypto/rsa"
-	"github.com/cravtos/asperitas-backend/foundation/web"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -25,12 +23,6 @@ type User struct {
 	Username string `json:"username"`
 	ID       string `json:"id"`
 }
-
-// ctxKey represents the type of value for the context key.
-type ctxKey int
-
-// Key is used to store/retrieve a Claims value from a context.Context.
-const Key ctxKey = 1
 
 // Claims represents the authorization claims transmitted via a JWT.
 type Claims struct {
@@ -168,7 +160,7 @@ func (a *Auth) ValidateToken(tokenStr string) (Claims, error) {
 func (a *Auth) ValidateString(authStr string) (Claims, error) {
 	parts := strings.Split(authStr, " ")
 	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-		return Claims{}, web.NewRequestError(ErrExpectedBearer, http.StatusUnauthorized)
+		return Claims{}, ErrExpectedBearer
 	}
 
 	// Validate the token is signed by us.
